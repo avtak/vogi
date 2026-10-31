@@ -559,12 +559,77 @@ async function startRec() {
   const src = ctx.createMediaStreamSource(stream);
   const proc = ctx.createScriptProcessor(4096, 1, 1);
   const chunks = [];
-  proc.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  proc.onaudioprocess = (e) => {
+    const c = new Float32Array(e.inputBuffer.getChannelData(0));
+    chunks.push(c);
+    liveFeed(c, ctx.sampleRate);
+  };
   src.connect(proc); proc.connect(ctx.destination);
   rec = { stream, ctx, src, proc, chunks, rate: ctx.sampleRate, timer: setTimeout(() => toggleMic(), 60000) };
 }
 
-const RATE = 24000; // Muse Voice Transcribe takes 16 or 24 kHz; 24 kHz keeps more of the voice
+const RATE = 24000; // Muse Voice Transcribe takes 16 or 24 kHz; 24 kHz is its native rate
+
+function keywordsNow() {
+  // Bias the recogniser to this scene's words and the words on screen.
+  const onScreen = (talk.help || []).concat(talk.history.slice(-1).map((t) => t.text)).join(" ")
+    .split(/[\s,.!?…]+/).filter((w) => w.length > 2);
+  return [...new Set((talk.scene.words || []).concat(onScreen))].slice(0, 40);
+}
+
+// Live: words appear while the learner speaks. The page streams 24 kHz PCM to Vogi's server,
+// which relays it to Muse Voice Transcribe's realtime socket. The file upload stays as a fallback.
+let live = null;
+function startLive() {
+  try {
+    const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/live`);
+    ws.binaryType = "arraybuffer";
+    live = { ws, ready: false, queue: [], text: "", final: "", error: "", rs: { pos: 0, prev: 0 } };
+    const me = live;
+    me.done = new Promise((res) => (me.resolve = res));
+    ws.onopen = () => ws.send(JSON.stringify({ keywords: keywordsNow() }));
+    ws.onmessage = (e) => {
+      const ev = JSON.parse(e.data);
+      if (ev.type === "ready") { me.ready = true; me.queue.forEach((b) => ws.send(b)); me.queue = []; }
+      else if (ev.type === "transcript" && ev.transcript) {
+        me.text = ev.transcript;
+        if (live === me) $("say").value = me.text;
+        if (ev.final) me.final = me.text;
+      } else if (ev.type === "error") me.error = ev.message || "Live speech failed.";
+    };
+    ws.onerror = () => { me.error = me.error || "Live connection failed."; };
+    ws.onclose = () => me.resolve();
+  } catch { live = null; }
+}
+
+function liveFeed(input, rate) {
+  if (!live || live.error || live.ws.readyState > 1) return;
+  // Linear resampling to 24 kHz, carrying the position and last sample across chunks.
+  const st = live.rs, step = rate / RATE, out = [];
+  let p = st.pos;
+  while (p <= input.length - 1) {
+    const i = Math.floor(p), f = p - i;
+    const a = i < 0 ? st.prev : input[i], b = i + 1 < input.length ? input[i + 1] : a;
+    out.push(a + (b - a) * f);
+    p += step;
+  }
+  st.pos = p - input.length; st.prev = input[input.length - 1];
+  const pcm = new Int16Array(out.length);
+  for (let k = 0; k < out.length; k++) pcm[k] = Math.max(-1, Math.min(1, out[k])) * 0x7fff;
+  if (live.ready) live.ws.send(pcm.buffer); else live.queue.push(pcm.buffer);
+}
+
+async function finishLive() {
+  const me = live; live = null;
+  if (!me) return null;
+  if (!me.error && me.ws.readyState === 1) {
+    me.ws.send(JSON.stringify({ type: "endStream" }));
+    await Promise.race([me.done, new Promise((r) => setTimeout(r, 6000))]);
+  }
+  try { me.ws.close(); } catch { /* already closed */ }
+  const text = (me.final || me.text || "").trim().replace(/([.!?])\1+$/, "$1");
+  return me.error ? null : text || null;
+}
 
 async function stopRec() {
   const r = rec; rec = null; clearTimeout(r.timer);
@@ -590,23 +655,27 @@ async function stopRec() {
 async function toggleMic() {
   const mic = $("mic");
   if (!rec) {
-    try { speechSynthesis && speechSynthesis.cancel(); await startRec(); } catch { status("Vogi cannot use the microphone. Type your answer instead."); return; }
-    mic.classList.add("on"); mic.textContent = "■ Stop and send"; status("Listening … speak now.");
+    try { speechSynthesis && speechSynthesis.cancel(); $("say").value = ""; startLive(); await startRec(); }
+    catch { finishLive(); status("Vogi cannot use the microphone. Type your answer instead."); return; }
+    mic.classList.add("on"); mic.textContent = "■ Stop"; status("Listening … speak now. Your words appear in the box.");
     return;
   }
   mic.classList.remove("on"); mic.textContent = "🎤 Speak";
   const wav = await stopRec();
+  const heard = await finishLive();
+  if (heard) {
+    $("say").value = heard; $("say").focus();
+    status("Vogi heard this. Fix any word it got wrong, then press Send.");
+    return;
+  }
   if (!wav) { status("That was too short. Try again."); return; }
-  await sendSpeech(wav);
+  await sendSpeech(wav); // live failed: fall back to the file upload
 }
 
 async function sendSpeech(wav) {
   setBusy(true); status("Muse Voice Transcribe is writing down what you said …");
   const form = new FormData(); form.append("audio", wav, "speech.wav");
-  // Bias the recogniser to this scene's words and the words on screen.
-  const onScreen = (talk.help || []).concat(talk.history.slice(-1).map((t) => t.text)).join(" ")
-    .split(/[\s,.!?…]+/).filter((w) => w.length > 2);
-  form.append("keywords", JSON.stringify([...new Set((talk.scene.words || []).concat(onScreen))].slice(0, 40)));
+  form.append("keywords", JSON.stringify(keywordsNow()));
   try {
     const d = await api("/api/transcribe", form, true);
     setBusy(false); status("");

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -9,7 +10,8 @@ from typing import Literal
 
 import httpx
 import openai
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+import websockets
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
@@ -27,6 +29,15 @@ IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 providers.load_env_file()
 app = FastAPI(title="Vogi")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+
+
+@app.middleware("http")
+async def revalidate(request, call_next):
+    """The page and its files change often during the event: browsers must check for a newer copy."""
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 class CorrectIn(BaseModel):
@@ -155,6 +166,82 @@ async def transcribe(audio: UploadFile = File(...), keywords: str = Form("[]")):
         raise HTTPException(502, f"Muse Voice Transcribe answered {e.response.status_code}.") from e
     except httpx.HTTPError as e:
         raise HTTPException(502, "Could not reach Muse Voice Transcribe.") from e
+
+
+LIVE_URL = "wss://api.meta.ai/v1/asr/realtime"
+LIVE_MAX_BYTES = 60 * 48000  # 60 s of 24 kHz 16-bit mono PCM
+
+
+@app.websocket("/api/live")
+async def live(ws: WebSocket):
+    """Live speech-to-text. The browser streams 24 kHz PCM here, Vogi relays it to Muse Voice
+    Transcribe's realtime socket (dev.meta.ai/docs/api-reference/voice/realtime) and sends the
+    growing transcript back. The key never reaches the browser."""
+    await ws.accept()
+    key = os.environ.get("MODEL_API_KEY")
+    if not key:
+        await ws.send_json({"type": "error", "message": "Speech needs MODEL_API_KEY."})
+        await ws.close()
+        return
+    try:
+        cfg = json.loads(await asyncio.wait_for(ws.receive_text(), 10))
+        words = [str(w)[:40] for w in cfg.get("keywords", []) if str(w).strip()][:40]
+    except (asyncio.TimeoutError, ValueError, TypeError, AttributeError, WebSocketDisconnect):
+        await ws.close(code=1008)
+        return
+    handshake = {
+        "authorization": {"accessToken": f"Bearer {key}"},
+        "audioEncoding": "PCM_24KHZ", "model": "muse-voice-transcribe-1.0", "mode": "PUSH_TO_TALK",
+        "languageBias": ["German"], "emitAudioProgress": False,
+    }
+    if words:
+        handshake["keywords"] = words
+    try:
+        async with websockets.connect(LIVE_URL, open_timeout=15, max_size=2**20) as up:
+            await up.send(json.dumps(handshake))
+            ack = json.loads(await asyncio.wait_for(up.recv(), 15))
+            if "sessionId" not in ack:
+                await ws.send_json({"type": "error", "message": "Muse Voice Transcribe refused the live session."})
+                return
+            await ws.send_json({"type": "ready"})
+
+            async def downstream():
+                async for msg in up:
+                    if isinstance(msg, bytes):
+                        continue
+                    ev = json.loads(msg)
+                    if ev.get("type") in ("transcript", "speechComplete", "error"):
+                        await ws.send_json({k: ev.get(k) for k in ("type", "transcript", "final", "message")})
+
+            down = asyncio.create_task(downstream())
+            sent = 0
+            try:
+                while True:
+                    m = await ws.receive()
+                    if m["type"] == "websocket.disconnect":
+                        down.cancel()
+                        return
+                    if m.get("bytes"):
+                        sent += len(m["bytes"])
+                        if sent > LIVE_MAX_BYTES:
+                            break
+                        await up.send(m["bytes"])
+                    elif m.get("text") and json.loads(m["text"]).get("type") == "endStream":
+                        break
+                await up.send(json.dumps({"type": "endStream"}))
+                await asyncio.wait_for(down, 20)
+            except asyncio.TimeoutError:
+                down.cancel()
+    except (OSError, websockets.WebSocketException, asyncio.TimeoutError) as e:
+        try:
+            await ws.send_json({"type": "error", "message": f"Live speech failed: {type(e).__name__}."})
+        except (RuntimeError, WebSocketDisconnect):
+            pass
+    finally:
+        try:
+            await ws.close()
+        except RuntimeError:
+            pass
 
 
 @app.post("/api/exercises")
