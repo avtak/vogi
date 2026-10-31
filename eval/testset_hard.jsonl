@@ -1,0 +1,18 @@
+{"id": "h-01", "level": "B1", "text": "Letzte Woche bin ich mit meine Freundin nach Berlin gefahren, weil wir wollten das Museum besuchen.", "errors": [{"category": "case", "bad": "mit meine Freundin", "good": ["mit meiner Freundin"]}, {"category": "verb_position", "bad": "weil wir wollten das Museum besuchen", "good": ["weil wir das Museum besuchen wollten"]}]}
+{"id": "h-02", "level": "A2", "text": "Am Wochenende ich habe viel gelernt und danach ich bin müde gewesen.", "errors": [{"category": "verb_position", "bad": "Wochenende ich habe", "good": ["Wochenende habe ich"]}, {"category": "verb_position", "bad": "danach ich bin", "good": ["danach bin ich", "danach war ich"]}]}
+{"id": "h-03", "level": "B1", "text": "Der Mann, der ich im Bus getroffen habe, hat mir geholfen, obwohl er hatte keine Zeit.", "errors": [{"category": "case", "bad": "der ich im Bus", "good": ["den ich im Bus"]}, {"category": "verb_position", "bad": "obwohl er hatte keine Zeit", "good": ["obwohl er keine Zeit hatte"]}]}
+{"id": "h-04", "level": "B2", "text": "Wenn ich mehr Geld hätte, ich würde ein Auto kaufen.", "errors": [{"category": "verb_position", "bad": "hätte, ich würde", "good": ["hätte, würde ich"]}]}
+{"id": "h-05", "level": "B2", "text": "Der Bericht muss bis morgen geschrieben werden sein.", "errors": [{"category": "verb_form", "bad": "werden sein", "good": ["geschrieben werden", "geschrieben sein", "geschrieben worden sein"]}]}
+{"id": "h-06", "level": "B2", "text": "Ich habe gestern mit dem Nachbar gesprochen.", "errors": [{"category": "case", "bad": "dem Nachbar", "good": ["dem Nachbarn"]}]}
+{"id": "h-07", "level": "C1", "text": "Die von der Regierung beschlossene Maßnahmen wurden scharf kritisiert.", "errors": [{"category": "adjective_ending", "bad": "beschlossene Maßnahmen", "good": ["beschlossenen Maßnahmen"]}]}
+{"id": "h-08", "level": "B1", "text": "Wir wohnen in einem kleinem Dorf.", "errors": [{"category": "adjective_ending", "bad": "kleinem Dorf", "good": ["kleinen Dorf"]}]}
+{"id": "h-09", "level": "B1", "text": "Ich warte seit zwei Stunden für den Bus.", "errors": [{"category": "preposition", "bad": "für den Bus", "good": ["auf den Bus"]}]}
+{"id": "h-10", "level": "A2", "text": "Ich anrufe morgen meine Mutter.", "errors": [{"category": "verb_position", "bad": "Ich anrufe", "good": ["Ich rufe"]}]}
+{"id": "h-11", "level": "B1", "text": "Ich erinnere an meinen ersten Schultag.", "errors": [{"category": "verb_form", "bad": "erinnere an", "good": ["erinnere mich an"]}]}
+{"id": "h-12", "level": "B2", "text": "Wenn ich mehr Zeit hätte, würde ich öfter ins Theater gehen.", "errors": []}
+{"id": "h-13", "level": "B2", "text": "Ich habe dem Kollegen, der neu in unserem Team ist, die Unterlagen gegeben.", "errors": []}
+{"id": "h-14", "level": "C1", "text": "Trotz des Regens sind wir pünktlich angekommen.", "errors": []}
+{"id": "h-15", "level": "C1", "text": "Er sagte, er habe keine Zeit.", "errors": []}
+{"id": "h-16", "level": "A2", "text": "Mir ist kalt.", "errors": []}
+{"id": "h-17", "level": "A2", "text": "Ich habe ihm gestern geholfen.", "errors": []}
+{"id": "h-18", "level": "B2", "text": "Es gibt keinen Grund, sich darüber zu beschweren.", "errors": []}

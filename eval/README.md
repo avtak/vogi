@@ -18,12 +18,18 @@ errors (28 errors in all) and 11 that are correct. Each error lists the wrong wo
 
 ## Results so far
 
-| Date | Model | Errors fixed | Clean sentences left alone |
-|---|---|---|---|
-| 31.10.2026 | `muse-spark-1.3` | 28 of 28 | 11 of 11 |
+| Date | Set | Model | Errors fixed | Clean sentences left alone |
+|---|---|---|---|---|
+| 31.10.2026 | basic (38) | `muse-spark-1.3` | 28 of 28 | 11 of 11 |
+| 31.10.2026 | hard (18) | `muse-spark-1.3` | 14 of 14 | 7 of 7 |
 
-A perfect score means this set is too easy to tell models apart. A harder set comes next:
-several errors per text, B2 to C1 errors, and sentences that look wrong but are correct.
+The hard set (`testset_hard.jsonl`, `uv run vogi-eval --set hard`) has several errors per text,
+B2 and C1 errors, and correct sentences that look wrong ("Mir ist kalt.", "Er sagte, er habe
+keine Zeit."). Muse Spark scored full marks on both. So far the sets show that it fixes
+sentence-level errors and leaves correct German alone. They do not yet separate models.
+
+One correction after the run: for h-05 the model wrote "geschrieben worden sein", which is also
+correct German. It was added to the accepted fixes and the result was rescored.
 
 ## Limits
 

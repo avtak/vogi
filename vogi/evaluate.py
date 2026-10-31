@@ -50,11 +50,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--provider", default=None, help="meta, baseten, fireworks, together or custom")
     ap.add_argument("--mode", default="grammar", choices=["grammar", "words", "natural"])
     ap.add_argument("--limit", type=int, default=0, help="only the first N items (a cheap smoke test)")
+    ap.add_argument("--set", default="basic", choices=["basic", "hard"], help="basic: testset.jsonl, hard: testset_hard.jsonl")
     args = ap.parse_args(argv)
 
     providers.load_env_file()
     p = providers.get(args.provider)
-    items = [json.loads(line) for line in (ROOT / "testset.jsonl").read_text().splitlines() if line.strip()]
+    path = ROOT / ("testset.jsonl" if args.set == "basic" else "testset_hard.jsonl")
+    items = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
     if args.limit:
         items = items[: args.limit]
 
@@ -75,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
     errs = [r for r in rows if r["errors"]]
     clean = [r for r in valid if r["kept"] is not None]
     summary = {
-        "provider": p.id, "model": p.model, "open_weight": p.open_weight, "mode": args.mode,
+        "provider": p.id, "model": p.model, "open_weight": p.open_weight, "mode": args.mode, "set": args.set,
         "date": dt.date.today().isoformat(), "items": len(rows),
         "errors_total": sum(r["errors"] for r in errs), "errors_fixed": sum(r["fixed"] for r in errs),
         "recall": (sum(r["fixed"] for r in errs) / sum(r["errors"] for r in errs)) if errs else None,
@@ -87,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
     }
     out_dir = ROOT / "results"
     out_dir.mkdir(exist_ok=True)
-    name = f"{p.id}-{args.mode}{'-limit' + str(args.limit) if args.limit else ''}.json"
+    name = f"{p.id}-{args.mode}{'-hard' if args.set == 'hard' else ''}{'-limit' + str(args.limit) if args.limit else ''}.json"
     (out_dir / name).write_text(json.dumps({"summary": summary, "rows": rows}, ensure_ascii=False, indent=1))
     print(json.dumps(summary, indent=1))
     print(f"Saved eval/results/{name}")
