@@ -39,6 +39,7 @@ history). No code, data or prompts come from my earlier app, Sprachvogel.
 | Handwriting | `/api/read` | Muse Spark copies the handwritten text with its mistakes. The learner confirms the text before any correction |
 | Red pen | `/api/locate` | Muse Spark's perception grounding returns a box (0-1000 grid) around each wrong word on the photo; the page draws the numbered marks |
 | Talk | `vogi/scenes.py`, `/api/talk`, `/api/transcribe` | Five scenes with a mission. The partner (Muse Spark) stays in role at the learner's level and never corrects mid-talk; it tracks which mission goals are reached. The browser records the learner, converts the audio to 16 kHz WAV, and Muse Voice Transcribe writes it down. At the end, everything the learner said goes through try first |
+| My pages | `vogi/static/vogi.js` | Every checked photo is kept in the browser (IndexedDB) with its red marks and corrections, so the learner can reopen an old homework page |
 | My mistakes | `vogi/static/vogi.js` | Each check saves its error categories in the learner's browser; "Practise my top 3" builds exercises from the most frequent ones |
 | Practice | `/api/exercises`, `/api/check` | Three exercises from the learner's own mistakes; an exact-match check first, the model as judge only for rewritten sentences |
 | Test set and score | `eval/` | 38 sentences with known errors (or none) and a scorer that runs the same set on any model |
@@ -86,7 +87,7 @@ shows the same score table.
 - The test set is small, and no native-speaker teacher has reviewed it yet. It shows how the models compare. It does not prove that a model is accurate.
 - Vogi is not a chat. It has no free-text conversation.
 - The test set covers A1 to B1. Corrections at B2 to C2 are not scored yet.
-- "My mistakes" lives in one browser. There are no accounts.
+- "My mistakes" and "My pages" live in one browser. There are no accounts, and nothing is stored on a server.
 
 ## Next
 

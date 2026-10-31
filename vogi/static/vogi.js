@@ -229,20 +229,84 @@ async function redPen(edits) {
   if ($("provider").value) form.append("provider", $("provider").value);
   try {
     const data = await api("/api/locate", form, true);
-    const layer = $("redpen-marks"); layer.replaceChildren();
-    let found = 0;
-    for (const m of data.result.marks) {
-      if (!m.found) continue;
-      found++;
-      const [x0, y0, x1, y1] = m.box;
-      const box = el("div", { class: "mark" }, el("span", {}, m.edit));
-      Object.assign(box.style, { left: x0 / 10 + "%", top: y0 / 10 + "%", width: (x1 - x0) / 10 + "%", height: (y1 - y0) / 10 + "%" });
-      layer.append(box);
-    }
+    const found = drawMarks($("redpen-marks"), data.result.marks);
+    savePage(edits, data.result.marks);
     $("redpen-note").textContent = `Red pen: ${found} of ${edits.length} changes marked on your page. The numbers match the list below.`;
     $("redpen").classList.remove("hidden");
   } catch (e) { $("redpen-note").textContent = "Red pen failed: " + e.message; $("redpen").classList.remove("hidden"); }
 }
+
+function drawMarks(layer, marks) {
+  layer.replaceChildren();
+  let found = 0;
+  for (const m of marks) {
+    if (!m.found) continue;
+    found++;
+    const [x0, y0, x1, y1] = m.box;
+    const box = el("div", { class: "mark" }, el("span", {}, m.edit));
+    Object.assign(box.style, { left: x0 / 10 + "%", top: y0 / 10 + "%", width: (x1 - x0) / 10 + "%", height: (y1 - y0) / 10 + "%" });
+    layer.append(box);
+  }
+  return found;
+}
+
+// My pages: checked photos with their marks, in this browser's IndexedDB.
+function pagesDb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("vogi", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("pages", { keyPath: "id" });
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function pagesTx(mode, fn) {
+  const d = await pagesDb();
+  return new Promise((res, rej) => {
+    const tx = d.transaction("pages", mode);
+    const req = fn(tx.objectStore("pages"));
+    tx.oncomplete = () => { d.close(); res(req && req.result); };
+    tx.onerror = () => { d.close(); rej(tx.error); };
+  });
+}
+async function savePage(edits, marks) {
+  try {
+    const page = {
+      id: Date.now().toString(36), t: new Date().toISOString(), level: state.level, photo: state.photo,
+      text: state.text, marks, edits: edits.map((e) => ({ original: e.original, replacement: e.replacement, category: e.category, rule: e.rule })),
+    };
+    await pagesTx("readwrite", (st) => st.put(page));
+    renderPages();
+  } catch { /* private window or storage blocked: the page still works */ }
+}
+let pageUrls = [], openPage = null;
+async function renderPages() {
+  let pages = [];
+  try { pages = (await pagesTx("readonly", (st) => st.getAll())) || []; } catch { /* no IndexedDB */ }
+  $("pages").classList.toggle("hidden", !pages.length);
+  pageUrls.forEach((u) => URL.revokeObjectURL(u)); pageUrls = [];
+  pages.sort((a, b) => b.t.localeCompare(a.t));
+  $("thumbs").replaceChildren(...pages.map((pg) => {
+    const url = URL.createObjectURL(pg.photo); pageUrls.push(url);
+    const n = pg.edits.length;
+    const b = el("button", { class: "thumb" + (openPage === pg.id ? " on" : "") }, el("img", { src: url, alt: "" }),
+      el("span", {}, `${new Date(pg.t).toLocaleDateString()} · ${pg.level} · ${n} mistake${n === 1 ? "" : "s"}`));
+    b.onclick = () => showPage(pg, url);
+    return b;
+  }));
+  if (openPage && !pages.some((p) => p.id === openPage)) closePage();
+}
+function showPage(pg, url) {
+  openPage = pg.id;
+  $("pv-img").src = url;
+  $("pv-meta").textContent = `Checked ${new Date(pg.t).toLocaleString()} at level ${pg.level}.`;
+  drawMarks($("pv-marks"), pg.marks);
+  $("pv-edits").replaceChildren(...pg.edits.map((e) => el("li", {},
+    el("span", { class: "from" }, e.original), " → ", el("span", { class: "to" }, e.replacement),
+    el("span", { class: "chip" }, CAT[e.category] || e.category), el("span", { class: "rule" }, e.rule))));
+  $("page-view").classList.remove("hidden");
+  document.querySelectorAll(".thumb").forEach((t) => t.classList.toggle("on", t.querySelector("img").src === url));
+  $("page-view").scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function closePage() { openPage = null; $("page-view").classList.add("hidden"); document.querySelectorAll(".thumb").forEach((t) => t.classList.remove("on")); }
 
 // My mistakes: kept in this browser only.
 function loadMemory() {
@@ -489,4 +553,11 @@ $("send").onclick = () => { learnerSay($("say").value); $("say").value = ""; };
 $("say").onkeydown = (e) => { if (e.key === "Enter") $("send").click(); };
 $("end-talk").onclick = endTalk;
 $("new-scene").onclick = () => { $("talk").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); speechSynthesis && speechSynthesis.cancel(); };
-loadProviders(); loadBoard(); renderMemory(); loadScenes();
+$("pv-close").onclick = closePage;
+$("pv-delete").onclick = async () => {
+  if (!openPage || !confirm("Delete this page from this browser?")) return;
+  const id = openPage;
+  try { await pagesTx("readwrite", (st) => st.delete(id)); } catch { /* ignore */ }
+  closePage(); renderPages();
+};
+loadProviders(); loadBoard(); renderMemory(); loadScenes(); renderPages();
