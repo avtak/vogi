@@ -62,7 +62,7 @@ language app, Sprachvogel.
 |---|---|---|
 | `muse-spark-1.3` | Meta Model API | Correction, reading handwriting, locating mistakes on the photo, level estimate, exercises, judging answers, the role-play partner |
 | `muse-voice-transcribe-1.0` | Meta Model API (realtime socket; file upload as fallback) | Writing down what the learner says, mistakes included |
-| `muse-image-1.0` | Meta Model API | One picture per Talk scene, made when the server starts and kept (5 pictures, about $0.05) |
+| `muse-image-1.0` | Meta Model API | One picture per Talk scene. Muse Image made the five in `vogi/static/scenes/` with `core.scene_image` on 31.10.2026, and the server makes any missing one at start |
 | Muse Spark Open | Partner hosts (Baseten, Fireworks, Together) | The same correction behind the same format, ready to score on the same test set once a partner key is available |
 
 The partner's voice in Talk is the browser's built-in text-to-speech, because the Model API has no
@@ -114,8 +114,11 @@ answer format.
 
 ## Built with
 
-Python, FastAPI and the OpenAI Python SDK (the Model API is OpenAI-compatible), plain HTML and
-JavaScript with no build step. I built it with an AI coding assistant and tested every feature myself.
+Python, FastAPI and the OpenAI Python SDK, with plain HTML and JavaScript and no build step. The
+Model API is OpenAI-compatible, and Meta offers no SDK of its own. Vogi talks to it on Chat
+Completions, so the same code runs Muse Spark Open on partner hosts. Vogi needs no server-side
+conversation state: the learner's history and memory live in the browser. That is also why the
+learner can fix a misheard line in Talk. I built it with an AI coding assistant and tested every feature myself.
 
 ## Licence
 

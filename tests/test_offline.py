@@ -49,6 +49,9 @@ def test_spoilers():
     from vogi.core import _spoils
     assert _spoils("Not yet. After essen, use einen, not einem.", "einen Kuchen", "ein Kuchen")
     assert not _spoils("Which case comes after 'mit'?", "meinem Bruder", "mein Bruder")
+    # one of two new words is a leak for the judge
+    assert _spoils("Use meinem here.", "meinem Bruders", "mein Bruder", any_word=True)
+    assert not _spoils("Use meinem here.", "meinem Bruders", "mein Bruder")
 
 
 if __name__ == "__main__":

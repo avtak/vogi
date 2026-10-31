@@ -212,17 +212,23 @@ def check_answer(p: Provider, exercise: dict, answer: str) -> dict:
                 "judged_by": "exact match"}
     verdict, _ = ask(p, prompts.judge_messages(exercise, answer), Verdict, effort="minimal")
     out = verdict.model_dump()
-    if not out["correct"] and _spoils(out["feedback"], exercise["answer"], answer):
+    if not out["correct"] and _spoils(out["feedback"], exercise["answer"], answer, any_word=True):
         # The learner tries again, so feedback must not hand over the fix.
         out["feedback"] = "Not yet. Read the hint again and try once more."
     return {**out, "judged_by": p.model}
 
 
-def _spoils(text: str, fix: str, before: str = "") -> bool:
-    """True if `text` contains the new words of `fix` (words not already in `before`)."""
+def _spoils(text: str, fix: str, before: str = "", any_word: bool = False) -> bool:
+    """True if `text` gives away the new words of `fix` (words not already in `before`).
+
+    any_word: one new word is enough (the judge's second hint). Without it, all new words must
+    appear: the scorer's count of hints, where "der, die or das?" is a fair choice question.
+    """
     new = {w.lower() for w in _words(fix) if w.isalpha()} - {w.lower() for w in _words(before)}
     said = {w.lower() for w in _words(text)}
-    return bool(new) and new <= said
+    if not new:
+        return False
+    return bool(new & said) if any_word else new <= said
 
 
 def _words(s: str) -> list[str]:

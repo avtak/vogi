@@ -221,8 +221,15 @@ SCENE_CACHE = Path(os.environ.get("VOGI_CACHE_DIR", tempfile.gettempdir())) / "v
 _scene_lock = threading.Lock()
 
 
+BUNDLED_SCENES = STATIC / "scenes"  # made by Muse Image with core.scene_image on 31.10.2026
+
+
 def _scene_picture(scene_id: str) -> Path:
-    """One Muse Image picture per scene, made once and kept on disk (5 pictures, about $0.05)."""
+    """One Muse Image picture per scene. The repo ships the five Vogi made, so a Space that wakes
+    from sleep shows them at once; a new scene gets its picture made once and kept on disk."""
+    bundled = BUNDLED_SCENES / f"{scene_id}.webp"
+    if bundled.exists():
+        return bundled
     path = SCENE_CACHE / f"{scene_id}.webp"
     with _scene_lock:
         if not path.exists():
@@ -240,6 +247,8 @@ def _make_scene_pictures():
 
     def work():
         for sid in scenes.SCENES:
+            if (BUNDLED_SCENES / f"{sid}.webp").exists():
+                continue
             try:
                 _scene_picture(sid)
             except Exception as e:  # a missing picture must not stop the app
