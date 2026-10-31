@@ -20,7 +20,7 @@ Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your W
 2. Home has three choices: **Check my writing**, **Practise speaking**, **My progress**.
 3. Check my writing: one text box with a camera button. Vogi marks each mistake with a hint,
    the learner fixes them one by one, then sees the rule and the full correction. On a photo,
-   the mistakes are highlighted on the page itself.
+   Vogi highlights the mistakes on the page itself.
 4. Technical details (model, cost, self-check, score table) sit in "How Vogi works" at the bottom.
 
 ## Why
