@@ -236,6 +236,7 @@ _scene_lock = threading.Lock()
 
 
 BUNDLED_SCENES = STATIC / "scenes"  # made by Muse Image with core.scene_image on 31.10.2026
+SCENES_URL = os.environ.get("VOGI_SCENES_URL", "https://raw.githubusercontent.com/avtak/vogi/main/vogi/static/scenes")
 
 
 def _scene_picture(scene_id: str) -> Path:
@@ -261,12 +262,22 @@ def _make_scene_pictures():
 
     def work():
         for sid in scenes.SCENES:
-            if (BUNDLED_SCENES / f"{sid}.webp").exists():
+            if (BUNDLED_SCENES / f"{sid}.webp").exists() or (SCENE_CACHE / f"{sid}.webp").exists():
                 continue
+            # The Hugging Face Space repo takes no binary files, so a Space fetches the pictures from
+            # the public GitHub repo (about 1 s) and only asks Muse Image if that fails.
+            try:
+                r = httpx.get(f"{SCENES_URL}/{sid}.webp", timeout=10)
+                if r.status_code == 200 and r.content[:4] == b"RIFF":
+                    SCENE_CACHE.mkdir(parents=True, exist_ok=True)
+                    (SCENE_CACHE / f"{sid}.webp").write_bytes(r.content)
+                    continue
+            except httpx.HTTPError:
+                pass
             try:
                 _scene_picture(sid)
             except Exception as e:  # a missing picture must not stop the app
-                print(f"scene picture {sid} failed: {type(e).__name__}", flush=True)
+                log.warning("scene picture %s failed: %s", sid, type(e).__name__)
 
     threading.Thread(target=work, daemon=True).start()
 
