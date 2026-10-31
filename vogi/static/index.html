@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vogi · German writing coach</title>
+<link rel="stylesheet" href="/static/vogi.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="bird" aria-hidden="true">🐦</span> Vogi</div>
+  <p class="tag">Write German. Pick what you want. Learn from your own mistakes.</p>
+</header>
+
+<main>
+  <section class="card" id="write">
+    <div class="tabs" role="tablist">
+      <button role="tab" class="tab on" data-tab="type" aria-selected="true">Type</button>
+      <button role="tab" class="tab" data-tab="photo" aria-selected="false">Photo of handwriting</button>
+    </div>
+
+    <div class="pane" id="pane-type">
+      <label for="text" class="lbl">Your German text</label>
+      <textarea id="text" rows="5" maxlength="1500" placeholder="Gestern ich habe mit mein Bruder Fußball gespielt."></textarea>
+    </div>
+
+    <div class="pane hidden" id="pane-photo">
+      <label class="drop" for="photo">
+        <input type="file" id="photo" accept="image/jpeg,image/png,image/webp" capture="environment">
+        <span id="photo-label">Choose or take a photo of your homework</span>
+      </label>
+      <div id="reading" class="hidden">
+        <img id="photo-preview" alt="Your photo">
+        <p class="lbl">Vogi read this. Fix any word it misread, then confirm. Vogi has not corrected anything yet.</p>
+        <p id="unclear" class="note hidden"></p>
+        <textarea id="read-text" rows="5" maxlength="1500"></textarea>
+        <button class="btn" id="confirm">This is what I wrote</button>
+      </div>
+    </div>
+
+    <div class="row">
+      <fieldset class="seg" id="level">
+        <legend>Level</legend>
+        <label><input type="radio" name="level" value="A1">A1</label>
+        <label><input type="radio" name="level" value="A2" checked>A2</label>
+        <label><input type="radio" name="level" value="B1">B1</label>
+      </fieldset>
+      <fieldset class="seg" id="mode">
+        <legend>What do you want?</legend>
+        <label><input type="radio" name="mode" value="grammar" checked>Grammar only</label>
+        <label><input type="radio" name="mode" value="words">Better words</label>
+        <label><input type="radio" name="mode" value="natural">Sound natural</label>
+      </fieldset>
+    </div>
+    <div class="row end">
+      <label class="model">Model
+        <select id="provider"></select>
+      </label>
+      <button class="btn primary" id="go">Check my text</button>
+    </div>
+    <p class="fine">Answers come from an AI model and can be wrong. Do not enter personal data.</p>
+  </section>
+
+  <p id="status" class="status" role="status" aria-live="polite"></p>
+
+  <section class="card hidden" id="result">
+    <h2>Your text, corrected</h2>
+    <p class="diff" id="diff"></p>
+    <p class="summary" id="summary"></p>
+    <ol class="edits" id="edits"></ol>
+    <div class="checks" id="checks"></div>
+    <p class="meta" id="meta"></p>
+    <button class="btn primary" id="practise">Practise my mistakes</button>
+  </section>
+
+  <section class="card hidden" id="practice">
+    <h2>Practice from your mistakes</h2>
+    <ol class="ex" id="ex"></ol>
+  </section>
+
+  <section class="card" id="score">
+    <h2>How good is Vogi?</h2>
+    <p class="note">Each model corrects the same test sentences in grammar mode. Every sentence has known errors, or none.
+      <a href="https://github.com/avtak/vogi/blob/main/eval/README.md">How the score works</a></p>
+    <div id="board"><p class="note">No test runs yet. Run <code>uv run vogi-eval</code>.</p></div>
+  </section>
+</main>
+
+<script src="/static/vogi.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+eval/results/*.raw.json
+samples/private/
+.DS_Store

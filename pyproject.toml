@@ -1,0 +1,24 @@
+[project]
+name = "vogi"
+version = "0.1.0"
+description = "Vogi: a German writing coach on Meta's Muse models. Structured corrections, practice from your own mistakes, and a scored test set."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "openai>=1.50",
+    "python-multipart>=0.0.9",
+]
+
+[project.scripts]
+vogi = "vogi.server:main"
+vogi-eval = "vogi.evaluate:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["vogi"]

@@ -1,0 +1,84 @@
+# Vogi: a German writing coach on Meta's Muse models
+
+Vogi corrects German writing for adult learners, and the learner never writes a prompt.
+They type a text or photograph their handwritten homework. Then they pick their level
+(A1, A2, B1) and what they want: **grammar only**, **better words** or **sound natural**.
+Vogi answers in one fixed format. It shows the corrected text with every change marked.
+Each change has a category and the rule behind it, at the learner's level. Then it builds exercises
+from the learner's own mistakes and checks the answers.
+
+Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your World").
+
+## Why
+
+I learn German in Leipzig. A chatbot rewrites my text and I learn nothing, or I spend my
+time on prompts like "only fix grammar, explain at A2, do not change my words". Teachers
+have no time to correct every text. Vogi turns the prompt into three buttons and the
+answer into a format you can learn from, and it checks its own answer.
+
+## What was built during the hackathon (27.10.2026 to 04.11.2026)
+
+Everything in this repository. It is a new codebase, started on 31.10.2026 (see the git
+history). No code, data or prompts come from my earlier app, Sprachvogel.
+
+| Part | File | What it does |
+|---|---|---|
+| Correction format | `vogi/schema.py` | Pydantic models that give both the strict JSON schema sent to the model and the check of the answer |
+| Prompts by level and mode | `vogi/prompts.py` | The learner picks; Vogi writes the prompt |
+| Model calls | `vogi/core.py` | Structured output with `response_format` json_schema; a fallback that puts the schema in the prompt for hosts that refuse it; one retry if the answer breaks the format |
+| Self-check | `vogi/core.py` `verify()` | Before the learner sees an answer, Vogi checks that each change points at words really in the text, and flags changes that have no explanation |
+| Handwriting | `/api/read` | Muse Spark copies the handwritten text with its mistakes. The learner confirms the text before any correction |
+| Practice | `/api/exercises`, `/api/check` | Three exercises from the learner's own mistakes; an exact-match check first, the model as judge only for rewritten sentences |
+| Test set and score | `eval/` | 38 sentences with known errors (or none) and a scorer that runs the same set on any model |
+| Web app | `vogi/static/` | One page, no build step, light and dark |
+
+## Meta models used
+
+| Model | Where | Used for |
+|---|---|---|
+| `muse-spark-1.3` | Meta Model API (`https://api.meta.ai/v1`) | Correction, reading handwriting, exercises, judging answers |
+| Muse Spark Open | Partner inference: Baseten (`meta-models/muse-spark-open-1026`), Fireworks, Together, or any OpenAI-compatible host | The same correction behind the same format, scored on the same test set |
+
+Vogi uses Standard mode only. The Model API docs say content in Standard mode is not used
+to train Meta models. Vogi never calls the `-contributor` model ids.
+
+## Run it
+
+Needs [uv](https://docs.astral.sh/uv/) and a Meta Model API key.
+
+```bash
+mkdir -p ~/.config/vogi && cp .env.example ~/.config/vogi/env && chmod 600 ~/.config/vogi/env
+# put your key into ~/.config/vogi/env
+uv run vogi                             # then open http://127.0.0.1:8790
+uv run vogi-eval --provider meta        # score Muse Spark 1.3 on the test set
+uv run vogi-eval --provider baseten     # score Muse Spark Open on the same set
+uv run python -m tests.test_offline     # checks that need no key
+```
+
+Vogi reads keys only from the environment or from `~/.config/vogi/env`, outside the repo.
+To try the page without a key, `tests/fake_host.py` serves canned answers. Its answers do not come from a model.
+
+## How good is it?
+
+`eval/README.md` explains the method, and `eval/results/` holds the runs. The app page
+shows the same score table.
+
+## What it is not
+
+- It does not score pronunciation. Speech-to-text hides pronunciation errors, so Vogi does not claim it.
+- The test set is small, and no native-speaker teacher has reviewed it yet. It shows how the models compare. It does not prove that a model is accurate.
+- Vogi is not a chat. It has no free-text conversation.
+
+## Next
+
+The correction format (`docs/SCHEMA.md`) has a version, so my language app Sprachvogel
+can call the same format later.
+
+## Built with
+
+Python, FastAPI and the OpenAI Python SDK (the Model API is OpenAI-compatible). I wrote the
+code with an AI coding assistant (Claude Code) and reviewed it.
+
+## Licence
+
+MIT, see `LICENSE`.

@@ -1,0 +1,38 @@
+{"id": "a1-01", "level": "A1", "text": "Der Kind spielt im Garten.", "errors": [{"category": "gender", "bad": "Der Kind", "good": ["Das Kind"]}]}
+{"id": "a1-02", "level": "A1", "text": "Er fahrt jeden Tag mit dem Bus.", "errors": [{"category": "verb_form", "bad": "fahrt", "good": ["fährt"]}]}
+{"id": "a1-03", "level": "A1", "text": "Ich kaufe ein Brot und zwei Apfel.", "errors": [{"category": "plural", "bad": "zwei Apfel", "good": ["zwei Äpfel"]}]}
+{"id": "a1-04", "level": "A1", "text": "Ich habe heute keine zeit.", "errors": [{"category": "capitalisation", "bad": "keine zeit", "good": ["keine Zeit"]}]}
+{"id": "a1-05", "level": "A1", "text": "Die Kinder spielt im Park.", "errors": [{"category": "verb_form", "bad": "Kinder spielt", "good": ["Kinder spielen"]}]}
+{"id": "a1-06", "level": "A1", "text": "Im Sommer ich fahre nach Italien.", "errors": [{"category": "verb_position", "bad": "Sommer ich fahre", "good": ["Sommer fahre ich"]}]}
+{"id": "a1-07", "level": "A1", "text": "Ich habe mein Schlüssel vergessen.", "errors": [{"category": "case", "bad": "mein Schlüssel", "good": ["meinen Schlüssel"]}]}
+{"id": "a1-08", "level": "A1", "text": "Ich bin in die Küche.", "errors": [{"category": "case", "bad": "in die Küche", "good": ["in der Küche"]}]}
+{"id": "a1-09", "level": "A1", "text": "Ich bin 25 Jahre alt und komme aus Spanien.", "errors": []}
+{"id": "a1-10", "level": "A1", "text": "Wann beginnt der Kurs?", "errors": []}
+{"id": "a1-11", "level": "A1", "text": "Kannst du mir bitte helfen?", "errors": []}
+{"id": "a1-12", "level": "A1", "text": "Wir treffen uns am Montag um zehn Uhr.", "errors": []}
+{"id": "a2-01", "level": "A2", "text": "Ich habe gestern nach Hause gegangen.", "errors": [{"category": "auxiliary", "bad": "Ich habe gestern", "good": ["Ich bin gestern"]}]}
+{"id": "a2-02", "level": "A2", "text": "Gestern ich habe Pizza gegessen.", "errors": [{"category": "verb_position", "bad": "Gestern ich habe", "good": ["Gestern habe ich"]}]}
+{"id": "a2-03", "level": "A2", "text": "Ich gehe mit meinem Freundin ins Kino.", "errors": [{"category": "case", "bad": "meinem Freundin", "good": ["meiner Freundin"]}]}
+{"id": "a2-04", "level": "A2", "text": "Weil ich bin müde, gehe ich nach Hause.", "errors": [{"category": "verb_position", "bad": "ich bin müde", "good": ["ich müde bin"]}]}
+{"id": "a2-05", "level": "A2", "text": "Ich weiß nicht, wo ist der Bahnhof.", "errors": [{"category": "verb_position", "bad": "wo ist der Bahnhof", "good": ["wo der Bahnhof ist"]}]}
+{"id": "a2-06", "level": "A2", "text": "Meine Schwester ist älter als mich.", "errors": [{"category": "case", "bad": "als mich", "good": ["als ich"]}]}
+{"id": "a2-07", "level": "A2", "text": "Ich lege das Buch auf dem Tisch.", "errors": [{"category": "case", "bad": "auf dem Tisch", "good": ["auf den Tisch"]}]}
+{"id": "a2-08", "level": "A2", "text": "Morgen ich werde meine Oma besuchen.", "errors": [{"category": "verb_position", "bad": "Morgen ich werde", "good": ["Morgen werde ich"]}]}
+{"id": "a2-09", "level": "A2", "text": "Wenn ich Zeit habe, ich lese ein Buch.", "errors": [{"category": "verb_position", "bad": "habe, ich lese", "good": ["habe, lese ich"]}]}
+{"id": "a2-10", "level": "A2", "text": "Ich helfe meinen Bruder bei den Hausaufgaben.", "errors": [{"category": "case", "bad": "meinen Bruder", "good": ["meinem Bruder"]}]}
+{"id": "a2-11", "level": "A2", "text": "Ich habe Hunger, deshalb ich esse jetzt.", "errors": [{"category": "verb_position", "bad": "deshalb ich esse", "good": ["deshalb esse ich"]}]}
+{"id": "a2-12", "level": "A2", "text": "Ich kenne ihm seit drei Jahren.", "errors": [{"category": "case", "bad": "kenne ihm", "good": ["kenne ihn"]}]}
+{"id": "a2-13", "level": "A2", "text": "Ich freue mich auf dem Wochenende.", "errors": [{"category": "case", "bad": "auf dem Wochenende", "good": ["auf das Wochenende", "aufs Wochenende"]}]}
+{"id": "a2-14", "level": "A2", "text": "Gestern ich habe mit mein Bruder Fußball gespielt.", "errors": [{"category": "verb_position", "bad": "Gestern ich habe", "good": ["Gestern habe ich"]}, {"category": "case", "bad": "mit mein Bruder", "good": ["mit meinem Bruder"]}]}
+{"id": "a2-15", "level": "A2", "text": "Wir haben keine Zeit, weil wir heute arbeiten müssen.", "errors": []}
+{"id": "a2-16", "level": "A2", "text": "Ich interessiere mich sehr für Musik.", "errors": []}
+{"id": "a2-17", "level": "A2", "text": "Gestern bin ich zum Arzt gegangen, weil ich Kopfschmerzen hatte.", "errors": []}
+{"id": "a2-18", "level": "A2", "text": "Ich arbeite als Verkäuferin in einem Supermarkt.", "errors": []}
+{"id": "b1-01", "level": "B1", "text": "Ich habe den Film nicht gesehen, weil ich keine Zeit gehabt.", "errors": [{"category": "auxiliary", "bad": "keine Zeit gehabt.", "good": ["keine Zeit gehabt habe", "keine Zeit hatte"]}]}
+{"id": "b1-02", "level": "B1", "text": "Der Arzt hat gesagt, dass ich soll mehr schlafen.", "errors": [{"category": "verb_position", "bad": "dass ich soll mehr schlafen", "good": ["dass ich mehr schlafen soll"]}]}
+{"id": "b1-03", "level": "B1", "text": "Das ist der Mann, der ich gestern gesehen habe.", "errors": [{"category": "case", "bad": "der ich gestern", "good": ["den ich gestern"]}]}
+{"id": "b1-04", "level": "B1", "text": "Sie hat zwei Kinder, ein Sohn und eine Tochter.", "errors": [{"category": "case", "bad": "ein Sohn", "good": ["einen Sohn"]}]}
+{"id": "b1-05", "level": "B1", "text": "Ich weiß nicht, ob er kommt morgen.", "errors": [{"category": "verb_position", "bad": "ob er kommt morgen", "good": ["ob er morgen kommt"]}]}
+{"id": "b1-06", "level": "B1", "text": "Das Buch, das ich gestern gekauft habe, ist sehr interessant.", "errors": []}
+{"id": "b1-07", "level": "B1", "text": "Obwohl es geregnet hat, sind wir spazieren gegangen.", "errors": []}
+{"id": "b1-08", "level": "B1", "text": "Ich danke dir für deine Hilfe bei dem Umzug.", "errors": []}
