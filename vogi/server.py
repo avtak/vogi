@@ -108,7 +108,8 @@ async def read(image: UploadFile = File(...), provider: str | None = Form(None))
 
 
 @app.post("/api/locate")
-async def locate(image: UploadFile = File(...), originals: str = Form(...), provider: str | None = Form(None)):
+async def locate(image: UploadFile = File(...), originals: str = Form(...), provider: str | None = Form(None),
+                 text: str = Form("")):
     if image.content_type not in IMAGE_TYPES:
         raise HTTPException(400, "Please send a JPEG, PNG, WebP or GIF photo.")
     data = await image.read()
@@ -120,7 +121,7 @@ async def locate(image: UploadFile = File(...), originals: str = Form(...), prov
         raise HTTPException(400, "originals must be a JSON list of strings.") from e
     if not words:
         raise HTTPException(400, "Nothing to mark.")
-    return _run(core.locate, _provider(provider), data, image.content_type, words)
+    return _run(core.locate, _provider(provider), data, image.content_type, words, text[:MAX_TEXT])
 
 
 @app.get("/api/scenes")

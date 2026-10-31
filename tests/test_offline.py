@@ -21,7 +21,7 @@ def test_verify_flags_invented_edit():
             {"original": "ich habe", "replacement": "habe ich", "category": "verb_position", "severity": "error", "hint": "h", "rule": "V2."},
             {"original": "Nudeln", "replacement": "Pizza", "category": "word_choice", "severity": "style", "hint": "h", "rule": "x"},
         ],
-        "summary": "ok",
+        "summary": "ok", "level_estimate": "A2",
     })
     v = verify("Gestern ich habe Pizza gegessen.", c, "grammar")
     assert [e["grounded"] for e in v["edits"]] == [True, False]
@@ -29,7 +29,7 @@ def test_verify_flags_invented_edit():
 
 
 def test_verify_flags_unexplained_change():
-    c = Correction.model_validate({"corrected_text": "Ich danke dir für deine Hilfe beim Umzug.", "edits": [], "summary": "ok"})
+    c = Correction.model_validate({"corrected_text": "Ich danke dir für deine Hilfe beim Umzug.", "edits": [], "summary": "ok", "level_estimate": "A2"})
     v = verify("Ich danke dir für deine Hilfe bei dem Umzug.", c, "grammar")
     assert v["unexplained"] and any("no change was explained" in w for w in v["warnings"])
 

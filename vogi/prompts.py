@@ -48,6 +48,9 @@ Rules:
 - `hint`: the learner first tries to fix the mistake alone, so the hint must NOT contain the new
   words. Point at the rule instead, at most 12 words. Example: "Which case comes after 'mit'?"
 - `summary`: one sentence, at most 25 words, kind and concrete.
+- `level_estimate`: the CEFR level the learner's text shows (A0 to C2), judged by the grammar and
+  words they try to use, not by the number of mistakes. A short text gives little evidence: then
+  stay close to the learner's stated level.
 - German conventions: nouns start with a capital letter. Use ä, ö, ü, ß, never ae, oe, ue.
 """
 
@@ -120,8 +123,11 @@ def exercise_messages(level: str, edits: list[dict]) -> list[dict]:
     ]
 
 
-def mark_messages(image_url: str, originals: list[str]) -> list[dict]:
-    lines = "\n".join(f"{i}. {o}" for i, o in enumerate(originals, 1))
+def mark_messages(image_url: str, originals: list[str], contexts: list[str] | None = None) -> list[dict]:
+    ctx = contexts or [""] * len(originals)
+    lines = "\n".join(
+        f"{i}. \"{o}\"" + (f"  (in the line: \"{c}\")" if c else "") for i, (o, c) in enumerate(zip(originals, ctx), 1)
+    )
     return [
         {"role": "system", "content": MARK_SYSTEM},
         {"role": "user", "content": [

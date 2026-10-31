@@ -54,6 +54,9 @@ class Correction(Strict):
     corrected_text: str = Field(description="The learner's whole text with every edit applied.")
     edits: list[Edit] = Field(description="One entry per change, in text order. Empty if nothing changes.")
     summary: str = Field(description="One encouraging sentence in simple English: what to practise next.")
+    level_estimate: Level = Field(
+        description="The CEFR level this text shows, judged by the range of grammar and words used, not by the number of mistakes."
+    )
 
 
 class Reading(Strict):

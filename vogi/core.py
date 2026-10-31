@@ -7,11 +7,13 @@ import json
 import os
 import re
 import time
+import io
 from difflib import SequenceMatcher
 from typing import TypeVar
 
 import httpx
 import openai
+from PIL import Image, ImageOps
 from pydantic import BaseModel, ValidationError
 
 from . import prompts
@@ -92,13 +94,49 @@ def read_image(p: Provider, image: bytes, mime: str) -> dict:
     return {"result": result.model_dump(), "meta": meta}
 
 
-def locate(p: Provider, image: bytes, mime: str, originals: list[str]) -> dict:
-    """Red pen: Muse Spark's perception grounding finds each wrong word on the photo."""
-    result, meta = ask(p, prompts.mark_messages(_data_url(image, mime), originals), Marks)
+def _upright(image: bytes, max_side: int = 2048) -> Image.Image:
+    """The photo as the learner sees it: EXIF rotation applied, at most max_side pixels."""
+    img = ImageOps.exif_transpose(Image.open(io.BytesIO(image))).convert("RGB")
+    img.thumbnail((max_side, max_side))
+    return img
+
+
+def _jpeg_url(img: Image.Image) -> str:
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=90)
+    return _data_url(buf.getvalue(), "image/jpeg")
+
+
+def _valid(box: list[int]) -> bool:
+    return len(box) == 4 and box[2] > box[0] and box[3] > box[1]
+
+
+def context_for(text: str, original: str, width: int = 60) -> str:
+    """The words around `original` in the learner's text, so the model finds the right copy."""
+    i = text.find(original)
+    if i < 0:
+        return ""
+    line_start = text.rfind("\n", 0, i) + 1
+    line_end = text.find("\n", i)
+    line = text[line_start:line_end if line_end >= 0 else len(text)]
+    return line if len(line) <= width * 2 else text[max(0, i - width):i + len(original) + width]
+
+
+def locate(p: Provider, image: bytes, mime: str, originals: list[str], text: str = "") -> dict:
+    """Red pen: Muse Spark's perception grounding finds each wrong word on the photo.
+
+    Two things made the boxes land on a real notebook photo (31.10.2026): the photo is sent
+    upright as the learner sees it, and each word comes with its line from the learner's text,
+    so the model picks the right copy of a word like "zeit". A zoomed second pass was tried and
+    made the boxes worse, so there is none.
+    """
+    img = _upright(image)
+    contexts = [context_for(text, o) for o in originals]
+    result, meta = ask(p, prompts.mark_messages(_jpeg_url(img), originals, contexts), Marks)
     marks = []
     for m in result.marks:
         box = [min(1000, max(0, v)) for v in m.box[:4]]
-        ok = m.found and len(box) == 4 and box[2] > box[0] and box[3] > box[1] and 1 <= m.edit <= len(originals)
+        ok = m.found and _valid(box) and 1 <= m.edit <= len(originals)
         marks.append({"edit": m.edit, "found": ok, "box": box if ok else None})
     return {"result": {"marks": marks}, "meta": meta}
 

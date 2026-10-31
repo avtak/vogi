@@ -24,6 +24,7 @@ CANNED = {
              "rule": "'mit' always takes the dative: der Bruder becomes meinem Bruder."},
         ],
         "summary": "Good sentence! Practise verb position 2 and the dative after 'mit'.",
+        "level_estimate": "A2",
     },
     "Reading": {"text": "Gestern ich habe mit mein Bruder Fußball gespielt.", "unclear_words": ["Bruder"]},
     "Exercises": {"exercises": [
