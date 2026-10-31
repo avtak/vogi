@@ -15,7 +15,9 @@ from vogi.server import app as vogi_app
 with gr.Blocks(title="Vogi") as info:
     gr.Markdown("Vogi runs at the root of this Space: open it without `/gradio`.")
 
-app = gr.mount_gradio_app(vogi_app, info, path="/gradio")
+# ssr_mode=False: on Spaces, Gradio's server-side rendering starts a Node server on port 7860,
+# the port Vogi needs (seen in the Space log, 31.10.2026).
+app = gr.mount_gradio_app(vogi_app, info, path="/gradio", ssr_mode=False)
 
 def _diagnose() -> None:
     """Print which processes run and which ports listen (no secrets), for the Space log."""
@@ -37,5 +39,6 @@ def _diagnose() -> None:
 
 
 if __name__ == "__main__":
-    _diagnose()
+    if os.environ.get("VOGI_DIAGNOSE"):
+        _diagnose()
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", "7860")))
