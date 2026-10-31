@@ -186,12 +186,14 @@ async def live(ws: WebSocket):
     try:
         cfg = json.loads(await asyncio.wait_for(ws.receive_text(), 10))
         words = [str(w)[:40] for w in cfg.get("keywords", []) if str(w).strip()][:40]
+        # endpointing: Muse Voice Transcribe detects when the learner stops talking (hands-free Talk)
+        mode = "ENDPOINTING" if cfg.get("mode") == "endpointing" else "PUSH_TO_TALK"
     except (asyncio.TimeoutError, ValueError, TypeError, AttributeError, WebSocketDisconnect):
         await ws.close(code=1008)
         return
     handshake = {
         "authorization": {"accessToken": f"Bearer {key}"},
-        "audioEncoding": "PCM_24KHZ", "model": "muse-voice-transcribe-1.0", "mode": "PUSH_TO_TALK",
+        "audioEncoding": "PCM_24KHZ", "model": "muse-voice-transcribe-1.0", "mode": mode,
         "languageBias": ["German"], "emitAudioProgress": False,
     }
     if words:
@@ -210,7 +212,7 @@ async def live(ws: WebSocket):
                     if isinstance(msg, bytes):
                         continue
                     ev = json.loads(msg)
-                    if ev.get("type") in ("transcript", "speechComplete", "error"):
+                    if ev.get("type") in ("transcript", "speechStart", "speechComplete", "error"):
                         await ws.send_json({k: ev.get(k) for k in ("type", "transcript", "final", "message")})
 
             down = asyncio.create_task(downstream())

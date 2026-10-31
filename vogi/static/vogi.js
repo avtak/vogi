@@ -494,19 +494,26 @@ function helpWords(words) {
   $("chat").append(box); $("chat").scrollTop = $("chat").scrollHeight;
 }
 
-function speak(text, force = false) {
-  if (!("speechSynthesis" in window) || (!force && !$("voice").checked)) return;
+// The partner's voice is the browser's own speech synthesis: the Model API has no text-to-speech.
+function speak(text, force = false, done = null) {
+  if (!("speechSynthesis" in window) || (!force && !$("voice").checked)) { if (done) done(); return; }
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "de-DE";
   const v = speechSynthesis.getVoices().find((x) => x.lang && x.lang.toLowerCase().startsWith("de"));
   if (v) u.voice = v;
   u.rate = ["A1", "A2"].includes(main(state.level)) ? 0.85 : 1;
+  if (done) {
+    let called = false;
+    const once = () => { if (!called) { called = true; done(); } };
+    u.onend = once; u.onerror = once;
+    setTimeout(once, 1500 + text.length * 110); // some browsers never fire onend
+  }
   speechSynthesis.speak(u);
 }
 
 function startScene(sc) {
-  Object.assign(talk, { scene: sc, history: [], busy: false, goalsDone: 0 });
+  Object.assign(talk, { scene: sc, history: [], busy: false, goalsDone: 0, handsFree: true, ended: false });
   $("scene-title").textContent = sc.title;
   $("goals").replaceChildren(...sc.goals.map((g) => el("li", {}, g)));
   $("chat").replaceChildren();
@@ -522,13 +529,17 @@ async function partnerTurn() {
     const data = await api("/api/talk", { scene: talk.scene.id, level: state.level, history: talk.history, provider: provider() });
     const r = data.result;
     talk.history.push({ role: "partner", text: r.reply });
-    bubble("partner", r.reply); speak(r.reply);
+    bubble("partner", r.reply);
     talk.help = r.help || [];
     helpWords(talk.help);
     [...$("goals").children].forEach((li, i) => li.classList.toggle("done", r.goals_done.includes(i + 1)));
     talk.goalsDone = r.goals_done.length;
     status("");
-    if (r.finished) return endTalk();
+    if (r.finished) { setBusy(false); speak(r.reply); return endTalk(); }
+    setBusy(false);
+    // Hands-free: when the partner has finished speaking, Vogi listens again by itself.
+    speak(r.reply, false, () => listen());
+    return;
   } catch (e) { status(e.message); }
   setBusy(false);
 }
@@ -542,13 +553,74 @@ function learnerSay(text) {
   partnerTurn();
 }
 
-function endTalk() {
+// End of the talk: the learner first checks what Vogi heard (a misheard word is not their
+// mistake), then gets the feedback. Hands-free speech skips the check during the talk, so it happens here.
+async function endTalk() {
+  talk.handsFree = false; talk.ended = true;
+  await stopListening();
+  const said = talk.history.filter((t) => t.role === "learner");
+  if (!said.length) { status("Say something first."); talk.ended = false; return; }
   setBusy(true);
-  const said = talk.history.filter((t) => t.role === "learner").map((t) => t.text);
-  if (!said.length) { status("Say something first."); setBusy(false); return; }
-  $("talk-note").textContent = `Mission: ${talk.goalsDone || 0} of ${talk.scene.goals.length} goals reached. Here is the feedback on what you said.`;
-  status("Vogi is checking what you said …");
-  runCorrect(said.join("\n"), false, true).then(() => setBusy(false));
+  document.querySelectorAll(".helpwords, .review").forEach((n) => n.remove());
+  const inputs = said.map((t) => el("input", { type: "text", value: t.text, maxlength: "300", "aria-label": "What you said" }));
+  const go = el("button", { class: "btn primary" }, "Get my feedback");
+  const box = el("div", { class: "review" },
+    el("strong", {}, `Mission: ${talk.goalsDone || 0} of ${talk.scene.goals.length} goals reached.`),
+    el("p", { class: "note" }, "Check what Vogi heard. If a word is wrong, fix it. Then get your feedback."),
+    ...inputs, go);
+  $("chat").append(box); box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  status("");
+  go.onclick = () => {
+    go.disabled = true;
+    inputs.forEach((inp, k) => { said[k].text = inp.value.trim() || said[k].text; });
+    $("talk-note").textContent = `Mission: ${talk.goalsDone || 0} of ${talk.scene.goals.length} goals reached. Here is the feedback on what you said.`;
+    status("Vogi is checking what you said …");
+    runCorrect(said.map((t) => t.text).join("\n"), false, true).then(() => setBusy(false));
+  };
+}
+
+// Hands-free listening. Muse Voice Transcribe's endpointing mode says when the learner has
+// finished a sentence; Vogi then sends it without a click.
+function updateMic() {
+  const on = !!rec;
+  $("mic").classList.toggle("on", on);
+  $("mic").textContent = on ? "⏸ Pause listening" : "🎤 Speak";
+}
+
+async function listen() {
+  if (!talk.handsFree || talk.busy || rec || talk.ended || !$("talk") || $("talk").classList.contains("hidden")) return;
+  $("say").value = "";
+  startLive({ mode: "endpointing" });
+  const me = live;
+  if (!me) { talk.handsFree = false; updateMic(); return; }
+  me.onTurn = (text) => {
+    if (live !== me) return;
+    const t = text.trim().replace(/([.!?])\1+$/, "$1");
+    if (!t) return;
+    clearTimeout(talk.idle);
+    finishLive(); // sets live to null at once, then closes the socket in the background
+    if (rec) stopRec().then(updateMic);
+    $("say").value = "";
+    learnerSay(t);
+  };
+  try { await startRec(); } catch {
+    finishLive(); talk.handsFree = false; updateMic();
+    status("Vogi cannot use the microphone. Type your answer instead."); return;
+  }
+  updateMic();
+  status("Your turn: speak now. Vogi sends it when you stop.");
+  clearTimeout(talk.idle);
+  talk.idle = setTimeout(() => {
+    if (live === me && !me.text) { talk.handsFree = false; stopListening(); status("Paused. Press Speak when you are ready."); }
+  }, 25000);
+}
+
+async function stopListening() {
+  clearTimeout(talk.idle);
+  if (rec) await stopRec();
+  const t = await finishLive();
+  updateMic();
+  return t;
 }
 
 // Microphone: record, downsample to 16 kHz mono 16-bit WAV (what Muse Voice Transcribe takes), send.
@@ -580,14 +652,14 @@ function keywordsNow() {
 // Live: words appear while the learner speaks. The page streams 24 kHz PCM to Vogi's server,
 // which relays it to Muse Voice Transcribe's realtime socket. The file upload stays as a fallback.
 let live = null;
-function startLive() {
+function startLive(opts = {}) {
   try {
     const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/live`);
     ws.binaryType = "arraybuffer";
     live = { ws, ready: false, queue: [], text: "", final: "", error: "", rs: { pos: 0, prev: 0 } };
     const me = live;
     me.done = new Promise((res) => (me.resolve = res));
-    ws.onopen = () => ws.send(JSON.stringify({ keywords: keywordsNow() }));
+    ws.onopen = () => ws.send(JSON.stringify({ keywords: keywordsNow(), mode: opts.mode || "push" }));
     ws.onmessage = (e) => {
       const ev = JSON.parse(e.data);
       if (ev.type === "ready") { me.ready = true; me.queue.forEach((b) => ws.send(b)); me.queue = []; }
@@ -595,6 +667,9 @@ function startLive() {
         me.text = ev.transcript;
         if (live === me) $("say").value = me.text;
         if (ev.final) me.final = me.text;
+      } else if (ev.type === "speechComplete" && ev.transcript) {
+        me.final = ev.transcript;
+        if (me.onTurn) me.onTurn(ev.transcript);
       } else if (ev.type === "error") me.error = ev.message || "Live speech failed.";
     };
     ws.onerror = () => { me.error = me.error || "Live connection failed."; };
@@ -653,6 +728,14 @@ async function stopRec() {
 }
 
 async function toggleMic() {
+  if (talk.scene && !talk.ended) {
+    if (!rec) { talk.handsFree = true; return listen(); }
+    talk.handsFree = false;
+    const words = await stopListening();
+    if (words) { $("say").value = words; $("say").focus(); status("Paused. Fix the words if needed, then press Send."); }
+    else status("Paused. Press Speak when you are ready.");
+    return;
+  }
   const mic = $("mic");
   if (!rec) {
     try { speechSynthesis && speechSynthesis.cancel(); $("say").value = ""; startLive(); await startRec(); }
@@ -769,6 +852,8 @@ document.querySelectorAll("input[name=mode]").forEach((r) => r.onchange = option
 $("mic").onclick = toggleMic;
 $("send").onclick = () => { learnerSay($("say").value); $("say").value = ""; };
 $("say").onkeydown = (e) => { if (e.key === "Enter") $("send").click(); };
+// Typing pauses hands-free listening, so the microphone does not talk over the keyboard.
+$("say").onfocus = () => { if (rec && talk.handsFree) { talk.handsFree = false; stopListening(); status("Listening paused while you type."); } };
 $("end-talk").onclick = endTalk;
 $("new-scene").onclick = () => { $("talk").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); speechSynthesis && speechSynthesis.cancel(); };
 $("pv-close").onclick = closePage;
