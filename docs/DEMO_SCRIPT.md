@@ -1,26 +1,43 @@
 # Demo video script (3 minutes)
 
-Record the screen at 1280 × 800 or larger, with the browser zoom at 125 %. Speak slowly.
-Use the real model (`muse-spark-1.3`), never the fake host.
+Record the screen of the live demo (https://avtak-vogi.hf.space) at 1280 × 800 or larger, browser
+zoom 125 %. Speak slowly. One take per part is fine. Cut the parts together afterwards.
+
+## Before you record (10 minutes)
+
+- Open the Space 2 minutes early, so it is awake. Enter the access code.
+- Set the level to **A2.1** with the slider.
+- Do two quick checks first, so "My progress" has something to show. For example
+  `Der Kind spielt im Garten.` and `Ich habe mein Pass vergessen.`
+- Have the photo of your notebook page ready on the laptop.
+- Close other tabs and notifications. Use headphones for the Talk part, so the partner's voice
+  does not go back into the microphone.
+
+## The script
 
 | Time | Screen | Say |
 |---|---|---|
-| 0:00–0:20 | The empty Vogi page | "I learn German in Leipzig. When I ask a chatbot to correct my German, it rewrites everything, and I learn nothing. Or I must write a long prompt first. Vogi needs no prompt." |
-| 0:20–0:50 | Pick "Everyday basics". Click Check my writing, type `Gestern ich habe mit mein Bruder Fußball gespielt.`, click Check. Fix mistake 1 yourself, get mistake 2 wrong once, then right | "I tell Vogi how much German I know, once. Then I write. Vogi does not rewrite my text. It marks where my mistakes are and gives me a hint. I fix them myself, and only then does it show the rule." |
-| 0:50–1:05 | Open "How Vogi works" and point at the self-check box | "Before I see the answer, Vogi checks it with code: every change must point at words that are really in my text." |
-| 1:05–1:40 | Check my writing, camera button, upload the photo. Fix one misread word, click Check. Show the highlighted marks | "Most learners write homework by hand. Muse Spark reads my handwriting and copies it with my mistakes. I fix what it misread, and I confirm. Then Vogi highlights every mistake, right on my page." |
-| 1:40–2:05 | Home, My progress. Click Practise my top 3. Answer one exercise right and one wrong | "A chatbot forgets my mistakes. Vogi keeps them. After a few texts it knows what I get wrong most, and it trains me on exactly that." |
-| 2:05–2:45 | Home, Practise speaking, "At the bakery". Speak two lines, end the talk, show the mission ticks and the feedback | "Writing is half of it. In Talk I speak with a baker. She stays at my level and does not interrupt me. Afterwards Vogi marks my spoken mistakes the same way. Muse Voice Transcribe writes down what I said, mistakes included." |
-| 2:45–3:00 | "How Vogi works": the score table, then the repo README | "On my test set, Muse Spark fixed 28 of 28 errors. Everything here was built during the hackathon. Vogi: write and speak German, and learn from your own mistakes." |
+| 0:00–0:15 | Your face or the Vogi home screen | "I am Daniel. I learn German in Leipzig. When I ask a chatbot to correct my German, it rewrites everything. I learn nothing, and tomorrow it forgets my mistakes." |
+| 0:15–0:25 | Home: the three choices | "This is Vogi. It works like a teacher's red pen, not a ghostwriter. No prompt. I just pick what I want to do." |
+| 0:25–1:05 | Check my writing. Type `Gestern ich habe mit mein Bruder Fußball gespielt.` and press Check. Fix mistake 1 right away. Type a wrong fix for mistake 2, read the hint, then fix it | "I write a sentence. Vogi does not show me the answer. It marks where my mistakes are and gives me a hint. I fix them myself. If I am wrong, it helps me again. Then it shows the rule." |
+| 1:05–1:40 | Camera button, upload the notebook photo. Show the text Vogi read, press Check, scroll to the highlighted page | "Most learners write homework by hand. Muse Spark reads my notebook and copies it with my mistakes. Then it finds each mistake on the photo and highlights it on my own page." |
+| 1:40–2:25 | Home, Practise speaking, At the bakery. Speak two lines, for example `Guten Morgen, ich möchte drei Brötchen.` and `Was kostet das?`. Then End and get feedback | "Writing is half of it. Now I speak with a baker, hands-free. Muse Voice Transcribe writes my words while I talk. The baker answers at my level and gives me words I can use. At the end, Vogi marks the mistakes I made while speaking." |
+| 2:25–2:40 | Home, My progress: the mistake bars and My pages | "Vogi remembers my mistakes. It trains me on the ones that keep coming back, and it keeps every page I checked." |
+| 2:40–2:55 | Open "How Vogi works": the self-check line and the score table | "Under the hood, Vogi checks every answer with its own code before I see it. On a test set of 56 sentences, Muse Spark fixed every error and left every correct sentence alone." |
+| 2:55–3:00 | The GitHub page | "Everything was built during the hackathon. Next, Vogi goes into my language app, Sprachvogel. Thank you." |
 
-The times above leave out the "Sound natural" beat. If the video runs short, add it back.
+## If something goes wrong while recording
 
-## Text for the handwritten photo
+- The model answers a little differently each time. If a take shows a different mistake, keep
+  it and say what you see.
+- If the Talk part mishears a word, fix the line with ✎ on camera. That shows a real feature.
+- If a part runs long, cut the "My progress" part first.
 
-Write these three sentences by hand on paper, with the mistakes, and photograph them in daylight:
+## Text for the notebook photo
+
+Any page of your own homework works. For a new page, write these three sentences. They carry five
+mistakes: verb position twice, the dative after "mit", the accusative "einen", and the verb at the
+end after "weil".
 
 > Gestern ich habe mit mein Bruder Fußball gespielt. Danach wir sind in ein Café gegangen.
 > Ich habe ein Kuchen gegessen, weil ich hatte Hunger.
-
-The five mistakes: verb position after *Gestern* and after *Danach*, dative after *mit*,
-accusative *einen Kuchen*, and the verb at the end after *weil*.
