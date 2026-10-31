@@ -1,8 +1,8 @@
 # Run Vogi as a Hugging Face Space
 
-The Space runs the same code as a laptop. It uses the **Gradio SDK on ZeroGPU hardware**, which
-free personal accounts can host (up to 2 Spaces; Hugging Face docs, 31.10.2026). `app.py` starts
-Vogi's own server; Gradio is only the runtime this Space type needs, and Vogi uses no GPU.
+The Space runs the same code as a laptop. It uses the **Gradio SDK on ZeroGPU hardware**. Free
+personal accounts can host up to 2 such Spaces (Hugging Face docs, 31.10.2026). `app.py` starts
+Vogi's own server. Gradio is only the runtime this Space type needs, and Vogi uses no GPU.
 
 The API key is a Space secret, so the browser never sees it. With `VOGI_ACCESS_CODE` set, every
 `/api` call needs that code. Two limits protect the credits: 60 model calls per visitor per hour
