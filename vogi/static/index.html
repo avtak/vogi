@@ -56,6 +56,7 @@
         <label><input type="radio" name="mode" value="natural">Sound natural</label>
       </fieldset>
     </div>
+    <label class="try"><input type="checkbox" id="tryfirst" checked> Try first: I fix my mistakes myself before Vogi shows the answer</label>
     <div class="row end">
       <label class="model">Model
         <select id="provider"></select>
@@ -68,17 +69,25 @@
   <p id="status" class="status" role="status" aria-live="polite"></p>
 
   <section class="card hidden" id="result">
-    <h2>Your text, corrected</h2>
+    <h2 id="result-title">Your text, corrected</h2>
     <figure id="redpen" class="hidden">
       <div class="paper"><img id="redpen-img" alt="Your handwriting with Vogi's marks"><div id="redpen-marks" aria-hidden="true"></div></div>
       <figcaption class="note" id="redpen-note"></figcaption>
     </figure>
-    <p class="diff" id="diff"></p>
-    <p class="summary" id="summary"></p>
-    <ol class="edits" id="edits"></ol>
-    <div class="checks" id="checks"></div>
-    <p class="meta" id="meta"></p>
-    <button class="btn primary" id="practise">Practise my mistakes</button>
+    <div id="try" class="hidden">
+      <p class="note" id="try-progress"></p>
+      <p class="diff" id="marked"></p>
+      <ol class="edits" id="try-list"></ol>
+      <button class="btn" id="show-full">Show the full correction</button>
+    </div>
+    <div id="full">
+      <p class="diff" id="diff"></p>
+      <p class="summary" id="summary"></p>
+      <ol class="edits" id="edits"></ol>
+      <div class="checks" id="checks"></div>
+      <p class="meta" id="meta"></p>
+      <button class="btn primary" id="practise">Practise my mistakes</button>
+    </div>
   </section>
 
   <section class="card" id="memory">

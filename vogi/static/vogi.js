@@ -2,6 +2,7 @@
 const $ = (id) => document.getElementById(id);
 const state = { text: "", level: "A2", edits: [], photo: null, fromPhoto: false };
 const MEMORY_KEY = "vogi.mistakes.v1";
+const TRY_KEY = "vogi.tryfirst";
 
 function el(tag, attrs = {}, ...kids) {
   const n = document.createElement(tag);
@@ -87,7 +88,79 @@ function renderResult(data) {
   $("practise").classList.toggle("hidden", !r.edits.some((e) => e.severity === "error"));
   $("result").classList.remove("hidden");
   $("practice").classList.add("hidden");
+  const tryable = r.edits.map((e, k) => ({ e, n: k + 1 })).filter(({ e }, i) => e.severity === "error" && c.edits[i].grounded);
+  const trying = $("tryfirst").checked && tryable.length > 0;
+  $("try").classList.toggle("hidden", !trying);
+  $("full").classList.toggle("hidden", trying);
+  $("show-full").classList.remove("hidden");
+  $("result-title").textContent = trying ? "Your mistakes: fix them yourself" : "Your text, corrected";
+  if (trying) renderTry(tryable);
 }
+
+// Try first: Vogi marks where each mistake is and gives a hint. The learner fixes it.
+function renderTry(items) {
+  const text = state.text, marked = $("marked"); marked.replaceChildren();
+  let cursor = 0;
+  const markEl = {};
+  for (const { e, n } of items) {
+    const i = text.indexOf(e.original, cursor);
+    if (i < 0) continue;
+    marked.append(text.slice(cursor, i));
+    markEl[n] = el("mark", { class: "miss" }, el("sup", {}, n), e.original);
+    marked.append(markEl[n]);
+    cursor = i + e.original.length;
+  }
+  marked.append(text.slice(cursor));
+  let done = 0, self = 0;
+  const progress = () => {
+    $("try-progress").textContent = done < items.length
+      ? `Vogi found ${items.length} mistake${items.length > 1 ? "s" : ""}. Fix each one yourself. Fixed by you: ${self} of ${items.length}.`
+      : `You fixed ${self} of ${items.length} mistakes yourself.`;
+    if (done === items.length) { $("full").classList.remove("hidden"); $("show-full").classList.add("hidden"); }
+  };
+  const list = $("try-list"); list.replaceChildren();
+  for (const { e, n } of items) {
+    const spoils = e.replacement && e.hint.toLowerCase().includes(e.replacement.toLowerCase()) && !e.original.toLowerCase().includes(e.replacement.toLowerCase());
+    const hint = spoils ? `Look at the ${CAT[e.category] || e.category}.` : e.hint;
+    const inp = el("input", { type: "text", value: e.original, autocomplete: "off", spellcheck: "false", "aria-label": `Your fix for mistake ${n}` });
+    const check = el("button", { class: "btn" }, "Check"), show = el("button", { class: "btn" }, "Show answer");
+    const fb = el("div", { class: "fb" });
+    let tries = 0, closed = false;
+    const close = (byLearner, msg) => {
+      closed = true; done++; if (byLearner) self++;
+      inp.disabled = true; check.disabled = true; show.disabled = true;
+      fb.className = "fb " + (byLearner ? "ok" : "no");
+      fb.replaceChildren((byLearner ? "✓ " : "") + msg, el("span", { class: "rule" }, e.rule));
+      if (markEl[n]) markEl[n].classList.add("done");
+      progress();
+    };
+    check.onclick = async () => {
+      const answer = inp.value.trim();
+      if (closed || !answer || answer === e.original) return;
+      if (_norm(answer) === _norm(e.replacement)) return close(true, "Right!");
+      check.disabled = true; fb.className = "fb"; fb.textContent = "…";
+      try {
+        const v = await api("/api/check", { provider: $("provider").value || null, answer, exercise: {
+          type: "fix_sentence", instruction: `Fix the words '${e.original}' in this text.`, prompt: state.text,
+          options: [], answer: e.replacement, category: e.category, hint: e.hint } });
+        if (v.correct) return close(true, "Right! " + v.feedback);
+        tries++;
+        if (tries >= 2) return close(false, `The answer: ${e.original} → ${e.replacement}`);
+        fb.className = "fb no"; fb.textContent = "Not yet. " + v.feedback;
+      } catch (err) { fb.textContent = err.message; }
+      if (!closed) check.disabled = false;
+    };
+    inp.onkeydown = (ev) => { if (ev.key === "Enter") check.click(); };
+    show.onclick = () => { if (!closed) close(false, `The answer: ${e.original} → ${e.replacement}`); };
+    list.append(el("li", { value: n },
+      el("span", { class: "chip" }, CAT[e.category] || e.category),
+      el("span", { class: "hint" }, hint),
+      el("div", {}, inp, check, " ", show), fb));
+  }
+  progress();
+}
+
+function _norm(s) { return s.replace(/[\s.!?,;:]+/g, " ").trim(); }
 
 async function runCorrect(text, fromPhoto = false) {
   state.text = text.trim(); state.level = picked("level"); state.fromPhoto = fromPhoto && !!state.photo;
@@ -265,4 +338,7 @@ $("photo").onchange = (e) => readPhoto(e.target.files[0]);
 $("practise").onclick = () => runPractice();
 $("practise-top").onclick = practiseTop;
 $("forget").onclick = () => { if (confirm("Forget all saved mistakes?")) { saveMemory([]); renderMemory(); } };
+$("show-full").onclick = () => { $("full").classList.remove("hidden"); $("show-full").classList.add("hidden"); };
+try { $("tryfirst").checked = localStorage.getItem(TRY_KEY) !== "0"; } catch { /* storage blocked */ }
+$("tryfirst").onchange = () => { try { localStorage.setItem(TRY_KEY, $("tryfirst").checked ? "1" : "0"); } catch { /* ignore */ } };
 loadProviders(); loadBoard(); renderMemory();

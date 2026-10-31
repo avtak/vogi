@@ -18,8 +18,8 @@ def test_verify_flags_invented_edit():
     c = Correction.model_validate({
         "corrected_text": "Gestern habe ich Pizza gegessen.",
         "edits": [
-            {"original": "ich habe", "replacement": "habe ich", "category": "verb_position", "severity": "error", "rule": "V2."},
-            {"original": "Nudeln", "replacement": "Pizza", "category": "word_choice", "severity": "style", "rule": "x"},
+            {"original": "ich habe", "replacement": "habe ich", "category": "verb_position", "severity": "error", "hint": "h", "rule": "V2."},
+            {"original": "Nudeln", "replacement": "Pizza", "category": "word_choice", "severity": "style", "hint": "h", "rule": "x"},
         ],
         "summary": "ok",
     })

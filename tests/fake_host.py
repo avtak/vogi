@@ -17,8 +17,10 @@ CANNED = {
         "corrected_text": "Gestern habe ich mit meinem Bruder Fußball gespielt.",
         "edits": [
             {"original": "ich habe", "replacement": "habe ich", "category": "verb_position", "severity": "error",
+             "hint": "Where does the verb go after 'Gestern'?",
              "rule": "In a main clause the verb is in position 2, so after 'Gestern' comes 'habe'."},
             {"original": "mein Bruder", "replacement": "meinem Bruder", "category": "case", "severity": "error",
+             "hint": "Which case comes after 'mit'?",
              "rule": "'mit' always takes the dative: der Bruder becomes meinem Bruder."},
         ],
         "summary": "Good sentence! Practise verb position 2 and the dative after 'mit'.",

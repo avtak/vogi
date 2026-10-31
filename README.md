@@ -17,8 +17,9 @@ I learn German in Leipzig. A chatbot rewrites my text and I learn nothing, or I 
 time on prompts like "only fix grammar, explain at A2, do not change my words". And it
 forgets my mistakes the next day. Teachers have no time to correct every text.
 
-Vogi works like a teacher's red pen, not a ghostwriter. It marks the mistakes and names the
-rule, and the learner fixes them. It keeps a list of the learner's mistakes and builds
+Vogi works like a teacher's red pen, not a ghostwriter. By default it only marks where each
+mistake is and gives a hint. The learner fixes it, Vogi checks the fix, and only then shows
+the answer and the rule. It keeps a list of the learner's mistakes and builds
 practice from the ones that keep coming back. The learner never writes a prompt.
 
 ## What was built during the hackathon (27.10.2026 to 04.11.2026)
@@ -31,6 +32,7 @@ history). No code, data or prompts come from my earlier app, Sprachvogel.
 | Correction format | `vogi/schema.py` | Pydantic models that give both the strict JSON schema sent to the model and the check of the answer |
 | Prompts by level and mode | `vogi/prompts.py` | The learner picks; Vogi writes the prompt |
 | Model calls | `vogi/core.py` | Structured output with `response_format` json_schema; a fallback that puts the schema in the prompt for hosts that refuse it; one retry if the answer breaks the format |
+| Try first | `vogi/static/vogi.js` `renderTry()` | The default: mistakes are marked with a hint that must not contain the fix; the learner's fix is checked by exact match first, and by the model as judge if it differs |
 | Self-check | `vogi/core.py` `verify()` | Before the learner sees an answer, Vogi checks that each change points at words really in the text, and flags changes that have no explanation |
 | Handwriting | `/api/read` | Muse Spark copies the handwritten text with its mistakes. The learner confirms the text before any correction |
 | Red pen | `/api/locate` | Muse Spark's perception grounding returns a box (0-1000 grid) around each wrong word on the photo; the page draws the numbered marks |

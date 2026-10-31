@@ -87,3 +87,11 @@ a { color: var(--accent); }
 .bars li { display: grid; grid-template-columns: 9.5em 1fr 2.5em; gap: 8px; align-items: center; margin: 6px 0; }
 .bar { height: 10px; border-radius: 5px; background: var(--accent); }
 .bars .ex1 { grid-column: 1 / -1; font-size: 14px; color: var(--muted); margin-top: -4px; }
+.try { display: block; margin-top: 12px; font-size: 15px; }
+.try input { width: 18px; height: 18px; vertical-align: -3px; accent-color: var(--accent); }
+mark.miss { background: var(--del-bg); color: var(--del); border-bottom: 2px solid var(--del); border-radius: 4px; padding: 0 2px; }
+mark.miss.done { background: var(--ins-bg); color: var(--ins); border-color: var(--ins); }
+mark.miss sup { font-size: 11px; font-weight: 700; margin-right: 2px; }
+#try-list input[type=text] { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); width: 100%; max-width: 360px; margin: 6px 6px 6px 0; }
+#try-list .hint { display: block; color: var(--muted); }
+#try-list .fb { margin-top: 2px; }

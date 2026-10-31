@@ -45,6 +45,8 @@ Rules:
 - corrected_text is the learner's whole text with all edits applied and nothing else changed.
 - `rule`: one sentence, at most 20 words, in English that fits the learner's level. Name the rule, not just the fix.
   Example: "In a side clause with 'weil', the conjugated verb goes to the end."
+- `hint`: the learner first tries to fix the mistake alone, so the hint must NOT contain the new
+  words. Point at the rule instead, at most 12 words. Example: "Which case comes after 'mit'?"
 - `summary`: one sentence, at most 25 words, kind and concrete.
 - German conventions: nouns start with a capital letter. Use ä, ö, ü, ß, never ae, oe, ue.
 """

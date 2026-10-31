@@ -44,6 +44,9 @@ class Edit(Strict):
     severity: Literal["error", "style"] = Field(
         description="error: the text was wrong. style: it was correct, but this sounds better."
     )
+    hint: str = Field(
+        description="A short question or nudge that points at the rule WITHOUT giving the new words."
+    )
     rule: str = Field(description="One short sentence in simple English: the rule behind this change.")
 
 

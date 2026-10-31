@@ -1,4 +1,4 @@
-# Vogi correction format, version `vogi-correction/1`
+# Vogi correction format, version `vogi-correction/2`
 
 Any app can ask a model for this format and show it the same way. The source of truth is
 `vogi/schema.py`. To print the JSON schema:
@@ -25,7 +25,8 @@ uv run python -c "import json; from vogi.schema import Correction, json_schema; 
     "corrected_text": "Gestern habe ich mit meinem Bruder Fußball gespielt.",
     "edits": [
       {"original": "ich habe", "replacement": "habe ich", "category": "verb_position",
-       "severity": "error", "rule": "In a main clause the verb is in position 2."}
+       "severity": "error", "hint": "Where does the verb go after 'Gestern'?",
+       "rule": "In a main clause the verb is in position 2."}
     ],
     "summary": "Practise verb position 2."
   },
@@ -34,6 +35,7 @@ uv run python -c "import json; from vogi.schema import Correction, json_schema; 
 }
 ```
 
+- `hint`: a nudge towards the rule that never contains the new words, for "try first". Added in version 2.
 - `severity`: `error` means the text was wrong; `style` means it was correct but sounds better changed.
 - `category`: one of `verb_position`, `verb_form`, `auxiliary`, `case`, `gender`, `adjective_ending`,
   `preposition`, `plural`, `spelling`, `capitalisation`, `punctuation`, `word_choice`, `register`, `idiom`,
