@@ -25,6 +25,15 @@ and 400 per day in total.
    Git asks for a username and a password: use a Hugging Face access token with write rights.
 5. Wait for the build (about two minutes), open the Space, enter the code, and check one text.
 
+**Binary files:** the Space repo takes no binary files, so it never gets `vogi/static/scenes/*.webp`.
+The Space builds from a local branch `space-main` that has the same code without them, and the
+server downloads the pictures from the GitHub repo at start. To deploy a new commit from `main`:
+
+```bash
+git checkout space-main && git cherry-pick <commit> && git checkout main
+git push space space-main:main
+```
+
 Also set a spend limit on the Meta Billing page. It is the last guard if a limit fails.
 
 ## Other hosts
