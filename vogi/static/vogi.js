@@ -55,6 +55,8 @@ function show(name, push = true) {
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("hidden", v.id !== "v-" + name));
   window.scrollTo({ top: 0 });
   if (name === "home") { nav.length = 0; renderProgressLine(); }
+  if (name === "talk" && (talk.ended || !talk.scene)) { $("talk").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); }
+  if (name !== "talk" && typeof rec !== "undefined" && rec && talk.scene) { talk.handsFree = false; stopListening(); }
 }
 function back() { show(nav.pop() || "home", false); }
 
@@ -245,6 +247,12 @@ function renderTry(items) {
 function _norm(s) { return s.replace(/[\s.!?,;:]+/g, " ").trim(); }
 
 async function runCorrect(text, fromPhoto = false, spoken = false) {
+  if (state.checking) return; // one check at a time: a double click must not send twice
+  state.checking = true;
+  try { await doCorrect(text, fromPhoto, spoken); } finally { state.checking = false; }
+}
+
+async function doCorrect(text, fromPhoto, spoken) {
   state.text = text.trim(); state.fromPhoto = fromPhoto && !!state.photo;
   state.mode = spoken ? "grammar" : picked("mode");
   state.origin = spoken ? "talk" : "write";
@@ -257,6 +265,8 @@ async function runCorrect(text, fromPhoto = false, spoken = false) {
     status("");
     $("redpen").classList.add("hidden");
     $("talk-note").classList.toggle("hidden", !spoken);
+    $("again").textContent = spoken ? "Talk again" : "Check another text";
+    $("other-scene").classList.toggle("hidden", !spoken);
     show("result");
     if (state.fromPhoto) redPen(data.result.edits);
   } catch (e) { status(e.message); } finally { $("go").disabled = false; }
@@ -465,12 +475,27 @@ async function loadScenes() {
   } catch { /* the server is down: loadProviders says so */ }
 }
 
-function bubble(role, text) {
-  const b = el("div", { class: "bubble " + role }, el("span", { class: "who" }, role === "partner" ? talk.scene.title : "You"), text);
+function bubble(role, text, turn = null) {
+  const txt = el("span", { class: "txt" }, text);
+  const b = el("div", { class: "bubble " + role }, el("span", { class: "who" }, role === "partner" ? talk.scene.title : "You"), txt);
   if (role === "partner") {
     const again = el("button", { class: "again", title: "Say it again", "aria-label": "Say it again" }, "🔊");
     again.onclick = () => speak(text, true);
     b.append(again);
+  } else if (turn) {
+    // A misheard word is not the learner's mistake: they fix it right on their line, or remove a line that was noise.
+    const fix = el("button", { class: "again", title: "Fix what Vogi heard", "aria-label": "Fix what Vogi heard" }, "✎");
+    const drop = el("button", { class: "again", title: "Remove this line", "aria-label": "Remove this line" }, "✕");
+    fix.onclick = () => {
+      const inp = el("input", { type: "text", value: turn.text, maxlength: "300", "aria-label": "What you said" });
+      const save = () => { turn.text = inp.value.trim() || turn.text; txt.textContent = turn.text; inp.replaceWith(txt); };
+      inp.onkeydown = (e) => { if (e.key === "Enter") save(); };
+      inp.onblur = save;
+      txt.replaceWith(inp); inp.focus();
+    };
+    drop.onclick = () => { turn.removed = true; b.remove(); };
+    b.append(fix, drop);
+    $("talk-hint").classList.remove("hidden");
   }
   $("chat").append(b); $("chat").scrollTop = $("chat").scrollHeight;
 }
@@ -513,7 +538,11 @@ function speak(text, force = false, done = null) {
 }
 
 function startScene(sc) {
+  if (Date.now() - (talk.startedAt || 0) < 1500) return; // a double click starts one scene, not two
+  talk.startedAt = Date.now();
+  stopListening();
   Object.assign(talk, { scene: sc, history: [], busy: false, goalsDone: 0, handsFree: true, ended: false });
+  $("talk-hint").classList.add("hidden"); $("end-talk").disabled = false;
   $("scene-title").textContent = sc.title;
   $("goals").replaceChildren(...sc.goals.map((g) => el("li", {}, g)));
   $("chat").replaceChildren();
@@ -526,7 +555,8 @@ function setBusy(b) { talk.busy = b; ["mic", "send", "say"].forEach((id) => ($(i
 async function partnerTurn() {
   setBusy(true); status(talk.history.length ? "The partner is answering …" : "The partner is starting …");
   try {
-    const data = await api("/api/talk", { scene: talk.scene.id, level: state.level, history: talk.history, provider: provider() });
+    const history = talk.history.filter((t) => !t.removed).map(({ role, text }) => ({ role, text }));
+    const data = await api("/api/talk", { scene: talk.scene.id, level: state.level, history, provider: provider() });
     const r = data.result;
     talk.history.push({ role: "partner", text: r.reply });
     bubble("partner", r.reply);
@@ -547,36 +577,27 @@ async function partnerTurn() {
 function learnerSay(text) {
   text = text.trim();
   if (!text || talk.busy) return;
-  talk.history.push({ role: "learner", text });
-  bubble("learner", text);
+  const turn = { role: "learner", text };
+  talk.history.push(turn);
+  bubble("learner", text, turn);
   if (talk.history.filter((t) => t.role === "learner").length >= MAX_TURNS) return endTalk();
   partnerTurn();
 }
 
-// End of the talk: the learner first checks what Vogi heard (a misheard word is not their
-// mistake), then gets the feedback. Hands-free speech skips the check during the talk, so it happens here.
+// End of the talk: straight to the feedback on everything the learner said. Misheard words are
+// fixed on the lines themselves (✎), so there is no extra step here.
 async function endTalk() {
+  if (talk.ended) return; // a double click must not send twice
   talk.handsFree = false; talk.ended = true;
   await stopListening();
-  const said = talk.history.filter((t) => t.role === "learner");
+  const said = talk.history.filter((t) => t.role === "learner" && !t.removed);
   if (!said.length) { status("Say something first."); talk.ended = false; return; }
   setBusy(true);
-  document.querySelectorAll(".helpwords, .review").forEach((n) => n.remove());
-  const inputs = said.map((t) => el("input", { type: "text", value: t.text, maxlength: "300", "aria-label": "What you said" }));
-  const go = el("button", { class: "btn primary" }, "Get my feedback");
-  const box = el("div", { class: "review" },
-    el("strong", {}, `Mission: ${talk.goalsDone || 0} of ${talk.scene.goals.length} goals reached.`),
-    el("p", { class: "note" }, "Check what Vogi heard. If a word is wrong, fix it. Then get your feedback."),
-    ...inputs, go);
-  $("chat").append(box); box.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  status("");
-  go.onclick = () => {
-    go.disabled = true;
-    inputs.forEach((inp, k) => { said[k].text = inp.value.trim() || said[k].text; });
-    $("talk-note").textContent = `Mission: ${talk.goalsDone || 0} of ${talk.scene.goals.length} goals reached. Here is the feedback on what you said.`;
-    status("Vogi is checking what you said …");
-    runCorrect(said.map((t) => t.text).join("\n"), false, true).then(() => setBusy(false));
-  };
+  $("end-talk").disabled = true;
+  document.querySelectorAll(".helpwords").forEach((n) => n.remove());
+  $("talk-note").textContent = `Mission: ${talk.goalsDone || 0} of ${talk.scene.goals.length} goals reached. Here is the feedback on what you said.`;
+  await runCorrect(said.map((t) => t.text).join("\n"), false, true);
+  setBusy(false); $("end-talk").disabled = false;
 }
 
 // Hands-free listening. Muse Voice Transcribe's endpointing mode says when the learner has
@@ -593,16 +614,28 @@ async function listen() {
   startLive({ mode: "endpointing" });
   const me = live;
   if (!me) { talk.handsFree = false; updateMic(); return; }
-  me.onTurn = (text) => {
-    if (live !== me) return;
-    const t = text.trim().replace(/([.!?])\1+$/, "$1");
-    if (!t) return;
+  // A learner needs time to think mid-sentence. After the recogniser marks the end of a
+  // sentence, Vogi waits a little longer; if the learner speaks again, the words join the same line.
+  me.parts = [];
+  const grace = { A1: 1500, A2: 1200 }[main(state.level)] || 800; // on top of about 2 s the recogniser waits
+  const send = () => {
+    if (live !== me || !me.parts.length) return;
+    const t = me.parts.join(" ").trim().replace(/([.!?])\1+$/, "$1");
     clearTimeout(talk.idle);
     finishLive(); // sets live to null at once, then closes the socket in the background
     if (rec) stopRec().then(updateMic);
     $("say").value = "";
     learnerSay(t);
   };
+  me.onTurn = (text) => {
+    if (live !== me || !text.trim()) return;
+    me.parts.push(text.trim()); me.text = "";
+    $("say").value = me.parts.join(" ");
+    clearTimeout(me.sendTimer);
+    me.sendTimer = setTimeout(send, grace);
+    status("Got it. Keep talking to add more, or wait and Vogi sends it.");
+  };
+  me.onSpeechStart = () => { clearTimeout(me.sendTimer); status("Listening …"); };
   try { await startRec(); } catch {
     finishLive(); talk.handsFree = false; updateMic();
     status("Vogi cannot use the microphone. Type your answer instead."); return;
@@ -665,8 +698,10 @@ function startLive(opts = {}) {
       if (ev.type === "ready") { me.ready = true; me.queue.forEach((b) => ws.send(b)); me.queue = []; }
       else if (ev.type === "transcript" && ev.transcript) {
         me.text = ev.transcript;
-        if (live === me) $("say").value = me.text;
+        if (live === me) $("say").value = [...(me.parts || []), me.text].join(" ");
         if (ev.final) me.final = me.text;
+      } else if (ev.type === "speechStart") {
+        if (me.onSpeechStart) me.onSpeechStart();
       } else if (ev.type === "speechComplete" && ev.transcript) {
         me.final = ev.transcript;
         if (me.onTurn) me.onTurn(ev.transcript);
@@ -702,7 +737,8 @@ async function finishLive() {
     await Promise.race([me.done, new Promise((r) => setTimeout(r, 6000))]);
   }
   try { me.ws.close(); } catch { /* already closed */ }
-  const text = (me.final || me.text || "").trim().replace(/([.!?])\1+$/, "$1");
+  const tail = me.parts && me.parts.length ? me.text : (me.final || me.text);
+  const text = [...(me.parts || []), tail || ""].join(" ").trim().replace(/([.!?])\1+$/, "$1");
   return me.error ? null : text || null;
 }
 
@@ -839,7 +875,12 @@ $("text").onkeydown = (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)
 $("cam").onclick = () => $("photo").click();
 $("photo").onchange = (e) => readPhoto(e.target.files[0]);
 $("photo-remove").onclick = removePhoto;
-$("again").onclick = () => { nav.length = 0; nav.push("home"); show("write", false); };
+$("again").onclick = () => {
+  nav.length = 0; nav.push("home");
+  if (state.origin === "talk" && talk.scene) { show("talk", false); talk.startedAt = 0; startScene(talk.scene); }
+  else show("write", false);
+};
+$("other-scene").onclick = () => { nav.length = 0; nav.push("home"); talk.ended = true; show("talk", false); };
 $("practise").onclick = () => runPractice();
 $("practise-top").onclick = practiseTop;
 $("practice-done").onclick = back;
