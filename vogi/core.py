@@ -79,7 +79,10 @@ def ask(p: Provider, messages: list[dict], model: type[T], effort: str | None = 
 
 
 def correct(p: Provider, text: str, level: str, mode: str, spoken: bool = False) -> dict:
-    result, meta = ask(p, prompts.correct_messages(text, level, mode, spoken), Correction)
+    # minimal reasoning for grammar only, low for the other goals: 2 to 3 s instead of 5 to 8 s for a
+    # sentence, with the same corrections (tested 31.10.2026; both test sets re-run with it)
+    effort = "minimal" if mode == "grammar" else "low"
+    result, meta = ask(p, prompts.correct_messages(text, level, mode, spoken), Correction, effort=effort)
     return {"result": result.model_dump(), "checks": verify(text, result, mode), "meta": meta}
 
 
@@ -181,7 +184,7 @@ def transcribe(wav: bytes, keywords: list[str] | None = None) -> dict:
 
 
 def exercises(p: Provider, level: str, edits: list[dict]) -> dict:
-    result, meta = ask(p, prompts.exercise_messages(level, edits), Exercises)
+    result, meta = ask(p, prompts.exercise_messages(level, edits), Exercises, effort="low")
     return {"result": result.model_dump(), "meta": meta}
 
 
@@ -195,8 +198,19 @@ def check_answer(p: Provider, exercise: dict, answer: str) -> dict:
     if exercise["type"] in ("fill_gap", "choose"):
         return {"correct": False, "feedback": f"Not quite. The answer is: {exercise['answer']}",
                 "judged_by": "exact match"}
-    verdict, _ = ask(p, prompts.judge_messages(exercise, answer), Verdict)
-    return {**verdict.model_dump(), "judged_by": p.model}
+    verdict, _ = ask(p, prompts.judge_messages(exercise, answer), Verdict, effort="minimal")
+    out = verdict.model_dump()
+    if not out["correct"] and _spoils(out["feedback"], exercise["answer"], answer):
+        # The learner tries again, so feedback must not hand over the fix.
+        out["feedback"] = "Not yet. Read the hint again and try once more."
+    return {**out, "judged_by": p.model}
+
+
+def _spoils(text: str, fix: str, before: str = "") -> bool:
+    """True if `text` contains the new words of `fix` (words not already in `before`)."""
+    new = {w.lower() for w in _words(fix) if w.isalpha()} - {w.lower() for w in _words(before)}
+    said = {w.lower() for w in _words(text)}
+    return bool(new) and new <= said
 
 
 def _words(s: str) -> list[str]:

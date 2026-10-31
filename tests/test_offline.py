@@ -37,11 +37,18 @@ def test_verify_flags_unexplained_change():
 def test_scoring():
     item = {"id": "t", "level": "A2", "text": "Ich kenne ihm seit drei Jahren.",
             "errors": [{"category": "case", "bad": "kenne ihm", "good": ["kenne ihn"]}]}
-    out = {"result": {"corrected_text": "Ich kenne ihn seit drei Jahren.", "edits": [{}]},
+    edit = {"original": "kenne ihm", "replacement": "kenne ihn", "hint": "Which case does kennen need?"}
+    out = {"result": {"corrected_text": "Ich kenne ihn seit drei Jahren.", "edits": [edit]},
            "checks": {"grounded": 1}, "meta": {"ms": 1, "tokens_in": 1, "tokens_out": 1}}
     assert score_item(item, out)["fixed"] == 1
     assert not has("einen Sohn", "ein Sohn")
     assert has("Gestern habe ich", "habe ich")
+
+
+def test_spoilers():
+    from vogi.core import _spoils
+    assert _spoils("Not yet. After essen, use einen, not einem.", "einen Kuchen", "ein Kuchen")
+    assert not _spoils("Which case comes after 'mit'?", "meinem Bruder", "mein Bruder")
 
 
 if __name__ == "__main__":

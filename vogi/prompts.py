@@ -55,7 +55,9 @@ Rules:
 - `rule`: one sentence, at most 20 words, in English that fits the learner's level. Name the rule, not just the fix.
   Example: "In a side clause with 'weil', the conjugated verb goes to the end."
 - `hint`: the learner first tries to fix the mistake alone, so the hint must NOT contain the new
-  words. Point at the rule instead, at most 12 words. Example: "Which case comes after 'mit'?"
+  words. Point at the word that triggers the rule, at most 12 words, as a correct and simple
+  English question. Examples: "Which case comes after 'mit'?", "Where does the verb go after
+  'Gestern'?". At A1 use no grammar terms at all; from A2, Dativ, Akkusativ and Perfekt are fine.
 - `summary`: one sentence, at most 25 words, kind and concrete.
 - `level_estimate`: the CEFR level the learner's text shows (A0 to C2), judged by the grammar and
   words they try to use, not by the number of mistakes. A short text gives little evidence: then
@@ -109,7 +111,10 @@ Return one JSON object in the given schema, nothing else."""
 
 JUDGE_SYSTEM = """You check one answer to a German exercise. The expected answer is given.
 An answer is correct if it is correct German and fixes the target mistake, even if it differs from the
-expected answer. Spelling and capitalisation count. Return one JSON object in the given schema."""
+expected answer. Spelling and capitalisation count.
+`feedback`: if the answer is wrong, give a second, different hint in one short, correct, simple English
+sentence. NEVER write the expected answer or any of its new words: the learner tries again.
+If the answer is right, confirm it in a few words. Return one JSON object in the given schema."""
 
 
 SPOKEN = ("This text was SPOKEN in a conversation and written down by speech recognition, one line per turn. "

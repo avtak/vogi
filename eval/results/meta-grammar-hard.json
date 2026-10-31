@@ -13,9 +13,10 @@
   "clean_kept": 1.0,
   "valid_rate": 1.0,
   "grounded_rate": 1.0,
-  "avg_ms": 7138.944444444444,
-  "tokens": 46617,
-  "rescored": "31.10.2026: h-05 'geschrieben worden sein' added as an accepted fix after the run"
+  "avg_ms": 1503.5555555555557,
+  "tokens": 20787,
+  "hints": 14,
+  "hint_spoils": 0
  },
  "rows": [
   {
@@ -23,9 +24,29 @@
    "valid": true,
    "corrected": "Letzte Woche bin ich mit meiner Freundin nach Berlin gefahren, weil wir das Museum besuchen wollten.",
    "edits": 2,
+   "edit_list": [
+    {
+     "original": "meine Freundin",
+     "replacement": "meiner Freundin",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case comes after 'mit'?",
+     "rule": "After 'mit' you always use the Dativ."
+    },
+    {
+     "original": "wollten das Museum besuchen",
+     "replacement": "das Museum besuchen wollten",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'weil'?",
+     "rule": "In a side clause with 'weil', the conjugated verb goes to the end."
+    }
+   ],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 2,
-   "ms": 13000,
-   "tokens": 3167,
+   "ms": 2557,
+   "tokens": 1321,
    "errors": 2,
    "fixed": 2,
    "kept": null
@@ -35,9 +56,29 @@
    "valid": true,
    "corrected": "Am Wochenende habe ich viel gelernt und danach bin ich müde gewesen.",
    "edits": 2,
+   "edit_list": [
+    {
+     "original": "ich habe",
+     "replacement": "habe ich",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'Am Wochenende'?",
+     "rule": "After a time phrase at the start, the verb comes second."
+    },
+    {
+     "original": "ich bin",
+     "replacement": "bin ich",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'danach'?",
+     "rule": "After a time word at the start, the verb comes second."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 2,
-   "ms": 6940,
-   "tokens": 2970,
+   "ms": 1547,
+   "tokens": 1319,
    "errors": 2,
    "fixed": 2,
    "kept": null
@@ -47,9 +88,29 @@
    "valid": true,
    "corrected": "Der Mann, den ich im Bus getroffen habe, hat mir geholfen, obwohl er keine Zeit hatte.",
    "edits": 2,
+   "edit_list": [
+    {
+     "original": "der ich",
+     "replacement": "den ich",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case does 'treffen' need for the man?",
+     "rule": "The relative pronoun for Akkusativ masculine singular is 'den'."
+    },
+    {
+     "original": "er hatte keine Zeit",
+     "replacement": "er keine Zeit hatte",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'obwohl'?",
+     "rule": "In a side clause with 'obwohl', the conjugated verb goes to the end."
+    }
+   ],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 2,
-   "ms": 7463,
-   "tokens": 3153,
+   "ms": 1694,
+   "tokens": 1278,
    "errors": 2,
    "fixed": 2,
    "kept": null
@@ -59,9 +120,21 @@
    "valid": true,
    "corrected": "Wenn ich mehr Geld hätte, würde ich ein Auto kaufen.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "ich würde",
+     "replacement": "würde ich",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after a 'Wenn' clause?",
+     "rule": "After a fronted subclause, the conjugated verb is in second position."
+    }
+   ],
+   "level_estimate": "B2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 5772,
-   "tokens": 2401,
+   "ms": 1560,
+   "tokens": 1141,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -71,9 +144,21 @@
    "valid": true,
    "corrected": "Der Bericht muss bis morgen geschrieben worden sein.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "werden",
+     "replacement": "worden",
+     "category": "verb_form",
+     "severity": "error",
+     "hint": "Which participle do you need for passive Perfekt?",
+     "rule": "Perfect passive infinitive uses 'worden', not 'werden'."
+    }
+   ],
+   "level_estimate": "B2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 19221,
-   "tokens": 5688,
+   "ms": 1806,
+   "tokens": 1199,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -83,9 +168,21 @@
    "valid": true,
    "corrected": "Ich habe gestern mit dem Nachbarn gesprochen.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "dem Nachbar",
+     "replacement": "dem Nachbarn",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case comes after 'mit'?",
+     "rule": "Masculine n-nouns like Nachbar add -n in Dativ."
+    }
+   ],
+   "level_estimate": "B2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 8230,
-   "tokens": 2805,
+   "ms": 1731,
+   "tokens": 1251,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -95,9 +192,21 @@
    "valid": true,
    "corrected": "Die von der Regierung beschlossenen Maßnahmen wurden scharf kritisiert.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "beschlossene Maßnahmen",
+     "replacement": "beschlossenen Maßnahmen",
+     "category": "adjective_ending",
+     "severity": "error",
+     "hint": "Which adjective ending follows definite article in nominative plural?",
+     "rule": "After the definite article in nominative plural, the adjective ends in -en."
+    }
+   ],
+   "level_estimate": "C1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 5122,
-   "tokens": 1998,
+   "ms": 1637,
+   "tokens": 1291,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -107,9 +216,21 @@
    "valid": true,
    "corrected": "Wir wohnen in einem kleinen Dorf.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "kleinem",
+     "replacement": "kleinen",
+     "category": "adjective_ending",
+     "severity": "error",
+     "hint": "Which adjective ending comes after 'einem'?",
+     "rule": "After 'einem' in Dativ, the adjective ends with -en."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 6621,
-   "tokens": 2529,
+   "ms": 2072,
+   "tokens": 1241,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -119,9 +240,21 @@
    "valid": true,
    "corrected": "Ich warte seit zwei Stunden auf den Bus.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "für",
+     "replacement": "auf",
+     "category": "preposition",
+     "severity": "error",
+     "hint": "Which preposition does 'warten' need?",
+     "rule": "The verb 'warten' always uses 'auf' plus Akkusativ."
+    }
+   ],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 5782,
-   "tokens": 2263,
+   "ms": 1512,
+   "tokens": 1165,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -130,10 +263,22 @@
    "id": "h-10",
    "valid": true,
    "corrected": "Ich rufe morgen meine Mutter an.",
-   "edits": 2,
-   "grounded": 2,
-   "ms": 13045,
-   "tokens": 4369,
+   "edits": 1,
+   "edit_list": [
+    {
+     "original": "Ich anrufe morgen meine Mutter.",
+     "replacement": "Ich rufe morgen meine Mutter an.",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the second part of this verb go?",
+     "rule": "Separable verbs split and the prefix goes to the end."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
+   "grounded": 1,
+   "ms": 2289,
+   "tokens": 1324,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -143,9 +288,21 @@
    "valid": true,
    "corrected": "Ich erinnere mich an meinen ersten Schultag.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "erinnere",
+     "replacement": "erinnere mich",
+     "category": "other",
+     "severity": "error",
+     "hint": "Which small word goes with erinnern?",
+     "rule": "The verb 'sich erinnern' is reflexive and needs a reflexive pronoun."
+    }
+   ],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 8068,
-   "tokens": 2856,
+   "ms": 2146,
+   "tokens": 1263,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -155,9 +312,12 @@
    "valid": true,
    "corrected": "Wenn ich mehr Zeit hätte, würde ich öfter ins Theater gehen.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "B2",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 1989,
-   "tokens": 1293,
+   "ms": 691,
+   "tokens": 998,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -167,9 +327,12 @@
    "valid": true,
    "corrected": "Ich habe dem Kollegen, der neu in unserem Team ist, die Unterlagen gegeben.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "B2",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 2799,
-   "tokens": 1524,
+   "ms": 961,
+   "tokens": 1021,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -179,9 +342,12 @@
    "valid": true,
    "corrected": "Trotz des Regens sind wir pünktlich angekommen.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "C1",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 6713,
-   "tokens": 2315,
+   "ms": 668,
+   "tokens": 1031,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -191,9 +357,12 @@
    "valid": true,
    "corrected": "Er sagte, er habe keine Zeit.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "C1",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 3414,
-   "tokens": 1512,
+   "ms": 1628,
+   "tokens": 980,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -203,9 +372,12 @@
    "valid": true,
    "corrected": "Mir ist kalt.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 2186,
-   "tokens": 1341,
+   "ms": 690,
+   "tokens": 950,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -215,9 +387,12 @@
    "valid": true,
    "corrected": "Ich habe ihm gestern geholfen.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 3351,
-   "tokens": 1610,
+   "ms": 903,
+   "tokens": 1004,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -227,9 +402,12 @@
    "valid": true,
    "corrected": "Es gibt keinen Grund, sich darüber zu beschweren.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "B2",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 8785,
-   "tokens": 2823,
+   "ms": 972,
+   "tokens": 1010,
    "errors": 0,
    "fixed": 0,
    "kept": true

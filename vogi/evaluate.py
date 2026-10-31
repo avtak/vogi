@@ -31,6 +31,10 @@ def score_item(item: dict, out: dict | None) -> dict:
     corrected = out["result"]["corrected_text"]
     row["corrected"] = corrected
     row["edits"] = len(out["result"]["edits"])
+    row["edit_list"] = out["result"]["edits"]
+    row["level_estimate"] = out["result"].get("level_estimate")
+    # Try first only works if a hint does not give away the fix.
+    row["hint_spoils"] = sum(core._spoils(e["hint"], e["replacement"], e["original"]) for e in out["result"]["edits"])
     row["grounded"] = out["checks"]["grounded"]
     row["ms"] = out["meta"]["ms"]
     row["tokens"] = out["meta"]["tokens_in"] + out["meta"]["tokens_out"]
@@ -86,6 +90,8 @@ def main(argv: list[str] | None = None) -> int:
         "grounded_rate": (sum(r["grounded"] for r in valid) / max(1, sum(r["edits"] for r in valid))),
         "avg_ms": (sum(r["ms"] for r in valid) / len(valid)) if valid else 0,
         "tokens": sum(r.get("tokens", 0) for r in valid),
+        "hints": sum(r["edits"] for r in valid),
+        "hint_spoils": sum(r.get("hint_spoils", 0) for r in valid),
     }
     out_dir = ROOT / "results"
     out_dir.mkdir(exist_ok=True)

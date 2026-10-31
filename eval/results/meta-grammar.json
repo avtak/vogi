@@ -4,6 +4,7 @@
   "model": "muse-spark-1.3",
   "open_weight": false,
   "mode": "grammar",
+  "set": "basic",
   "date": "2026-10-31",
   "items": 38,
   "errors_total": 28,
@@ -12,8 +13,10 @@
   "clean_kept": 1.0,
   "valid_rate": 1.0,
   "grounded_rate": 1.0,
-  "avg_ms": 4094.4736842105262,
-  "tokens": 58613
+  "avg_ms": 1329.6842105263158,
+  "tokens": 42523,
+  "hints": 28,
+  "hint_spoils": 1
  },
  "rows": [
   {
@@ -21,9 +24,21 @@
    "valid": true,
    "corrected": "Das Kind spielt im Garten.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "Der",
+     "replacement": "Das",
+     "category": "gender",
+     "severity": "error",
+     "hint": "Which word goes with Kind: der, die or das?",
+     "rule": "The noun 'Kind' is neuter and uses 'das'."
+    }
+   ],
+   "level_estimate": "A1",
+   "hint_spoils": 1,
    "grounded": 1,
-   "ms": 5070,
-   "tokens": 1524,
+   "ms": 2199,
+   "tokens": 1203,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -33,9 +48,21 @@
    "valid": true,
    "corrected": "Er fährt jeden Tag mit dem Bus.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "fahrt",
+     "replacement": "fährt",
+     "category": "spelling",
+     "severity": "error",
+     "hint": "How do you write this word for 'er'?",
+     "rule": "The verb 'fahren' changes a to ä with er, sie, es."
+    }
+   ],
+   "level_estimate": "A1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 4631,
-   "tokens": 1691,
+   "ms": 2056,
+   "tokens": 1258,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -45,9 +72,21 @@
    "valid": true,
    "corrected": "Ich kaufe ein Brot und zwei Äpfel.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "zwei Apfel",
+     "replacement": "zwei Äpfel",
+     "category": "plural",
+     "severity": "error",
+     "hint": "What is the plural of Apfel after zwei?",
+     "rule": "The plural of Apfel adds Umlaut and -s ending."
+    }
+   ],
+   "level_estimate": "A1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 5626,
-   "tokens": 1662,
+   "ms": 1434,
+   "tokens": 1140,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -57,9 +96,21 @@
    "valid": true,
    "corrected": "Ich habe heute keine Zeit.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "zeit",
+     "replacement": "Zeit",
+     "category": "capitalisation",
+     "severity": "error",
+     "hint": "What letter do nouns start with?",
+     "rule": "All German nouns start with a capital letter."
+    }
+   ],
+   "level_estimate": "A1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 3830,
-   "tokens": 1319,
+   "ms": 1543,
+   "tokens": 1139,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -69,9 +120,21 @@
    "valid": true,
    "corrected": "Die Kinder spielen im Park.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "spielt",
+     "replacement": "spielen",
+     "category": "verb_form",
+     "severity": "error",
+     "hint": "Who plays here, one or many children?",
+     "rule": "Use a plural verb with a plural subject like Kinder."
+    }
+   ],
+   "level_estimate": "A1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 4767,
-   "tokens": 1444,
+   "ms": 1868,
+   "tokens": 1165,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -81,9 +144,21 @@
    "valid": true,
    "corrected": "Im Sommer fahre ich nach Italien.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "Sommer ich fahre",
+     "replacement": "Sommer fahre ich",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "What comes in second place after 'Im Sommer'?",
+     "rule": "In a main clause the verb is always in second position."
+    }
+   ],
+   "level_estimate": "A1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 4652,
-   "tokens": 1721,
+   "ms": 2018,
+   "tokens": 1272,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -93,9 +168,21 @@
    "valid": true,
    "corrected": "Ich habe meinen Schlüssel vergessen.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "mein",
+     "replacement": "meinen",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case do you need for the thing you forget?",
+     "rule": "Masculine 'mein' adds -en in Akkusativ."
+    }
+   ],
+   "level_estimate": "A1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 4350,
-   "tokens": 1517,
+   "ms": 1746,
+   "tokens": 1080,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -105,9 +192,21 @@
    "valid": true,
    "corrected": "Ich bin in der Küche.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "die Küche",
+     "replacement": "der Küche",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case shows place with 'sein'?",
+     "rule": "Use dative after 'in' to say where you are."
+    }
+   ],
+   "level_estimate": "A1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 7231,
-   "tokens": 1937,
+   "ms": 1514,
+   "tokens": 1220,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -117,9 +216,12 @@
    "valid": true,
    "corrected": "Ich bin 25 Jahre alt und komme aus Spanien.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "A1",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 1994,
-   "tokens": 1052,
+   "ms": 670,
+   "tokens": 961,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -129,9 +231,12 @@
    "valid": true,
    "corrected": "Wann beginnt der Kurs?",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "A1",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 2862,
-   "tokens": 1128,
+   "ms": 1121,
+   "tokens": 1000,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -141,9 +246,12 @@
    "valid": true,
    "corrected": "Kannst du mir bitte helfen?",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "A1",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 2839,
-   "tokens": 1197,
+   "ms": 611,
+   "tokens": 949,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -153,9 +261,12 @@
    "valid": true,
    "corrected": "Wir treffen uns am Montag um zehn Uhr.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "A1",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 2442,
-   "tokens": 1175,
+   "ms": 814,
+   "tokens": 961,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -165,9 +276,21 @@
    "valid": true,
    "corrected": "Ich bin gestern nach Hause gegangen.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "habe",
+     "replacement": "bin",
+     "category": "auxiliary",
+     "severity": "error",
+     "hint": "Which helper verb goes with gehen in the past?",
+     "rule": "The verb gehen uses sein in the Perfekt."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 3970,
-   "tokens": 1613,
+   "ms": 1300,
+   "tokens": 1090,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -177,9 +300,21 @@
    "valid": true,
    "corrected": "Gestern habe ich Pizza gegessen.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "ich habe",
+     "replacement": "habe ich",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'Gestern'?",
+     "rule": "After a time word first, the verb stays in second position."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 4897,
-   "tokens": 1810,
+   "ms": 1644,
+   "tokens": 1217,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -189,9 +324,21 @@
    "valid": true,
    "corrected": "Ich gehe mit meiner Freundin ins Kino.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "meinem Freundin",
+     "replacement": "meiner Freundin",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case do you need after 'mit'?",
+     "rule": "After 'mit' you always use the Dativ case."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 6404,
-   "tokens": 2169,
+   "ms": 1993,
+   "tokens": 1373,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -201,9 +348,21 @@
    "valid": true,
    "corrected": "Weil ich müde bin, gehe ich nach Hause.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "ich bin müde",
+     "replacement": "ich müde bin",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'weil'?",
+     "rule": "In a side clause with 'weil', the conjugated verb goes to the end."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 3806,
-   "tokens": 1698,
+   "ms": 1081,
+   "tokens": 1143,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -213,9 +372,21 @@
    "valid": true,
    "corrected": "Ich weiß nicht, wo der Bahnhof ist.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "wo ist der Bahnhof",
+     "replacement": "wo der Bahnhof ist",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after the question word?",
+     "rule": "In a side clause the conjugated verb goes to the end."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 4555,
-   "tokens": 1819,
+   "ms": 1565,
+   "tokens": 1219,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -225,9 +396,21 @@
    "valid": true,
    "corrected": "Meine Schwester ist älter als ich.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "mich",
+     "replacement": "ich",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which pronoun do you use after 'als'?",
+     "rule": "After 'als' in a comparison, use the nominative pronoun."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 3469,
-   "tokens": 1501,
+   "ms": 1567,
+   "tokens": 1204,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -237,9 +420,21 @@
    "valid": true,
    "corrected": "Ich lege das Buch auf den Tisch.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "dem",
+     "replacement": "den",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case comes after 'auf' for movement?",
+     "rule": "Use accusative for direction with change of place."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 4726,
-   "tokens": 1880,
+   "ms": 1391,
+   "tokens": 1107,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -249,9 +444,21 @@
    "valid": true,
    "corrected": "Morgen werde ich meine Oma besuchen.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "ich werde",
+     "replacement": "werde ich",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'Morgen'?",
+     "rule": "The conjugated verb stays in second position in a main clause."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 3221,
-   "tokens": 1623,
+   "ms": 1709,
+   "tokens": 1193,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -261,9 +468,21 @@
    "valid": true,
    "corrected": "Wenn ich Zeit habe, lese ich ein Buch.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "ich lese",
+     "replacement": "lese ich",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'Wenn... habe,'?",
+     "rule": "After the weil/wenn-clause first, the verb comes next."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 2808,
-   "tokens": 1332,
+   "ms": 1328,
+   "tokens": 1123,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -273,9 +492,21 @@
    "valid": true,
    "corrected": "Ich helfe meinem Bruder bei den Hausaufgaben.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "meinen",
+     "replacement": "meinem",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case comes after 'helfen'?",
+     "rule": "The verb helfen needs Dativ, not Akkusativ."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 2777,
-   "tokens": 1459,
+   "ms": 1183,
+   "tokens": 1124,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -285,9 +516,21 @@
    "valid": true,
    "corrected": "Ich habe Hunger, deshalb esse ich jetzt.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "deshalb ich esse",
+     "replacement": "deshalb esse ich",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'deshalb'?",
+     "rule": "After words like 'deshalb', the conjugated verb comes second."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 3963,
-   "tokens": 1601,
+   "ms": 1316,
+   "tokens": 1171,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -297,9 +540,21 @@
    "valid": true,
    "corrected": "Ich kenne ihn seit drei Jahren.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "ihm",
+     "replacement": "ihn",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case comes after 'kennen'?",
+     "rule": "The verb 'kennen' needs Akkusativ, not Dativ."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 4462,
-   "tokens": 1479,
+   "ms": 1174,
+   "tokens": 1124,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -309,9 +564,21 @@
    "valid": true,
    "corrected": "Ich freue mich auf das Wochenende.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "dem",
+     "replacement": "das",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case comes after 'auf' here?",
+     "rule": "After 'sich freuen auf' for future, use Akkusativ."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 3635,
-   "tokens": 1652,
+   "ms": 1002,
+   "tokens": 1093,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -321,9 +588,29 @@
    "valid": true,
    "corrected": "Gestern habe ich mit meinem Bruder Fußball gespielt.",
    "edits": 2,
+   "edit_list": [
+    {
+     "original": "Gestern ich habe",
+     "replacement": "Gestern habe ich",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'Gestern'?",
+     "rule": "After Gestern in position 1, the conjugated verb comes next."
+    },
+    {
+     "original": "mein Bruder",
+     "replacement": "meinem Bruder",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case comes after 'mit'?",
+     "rule": "After mit you need Dativ, so mein becomes meinem."
+    }
+   ],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 2,
-   "ms": 3519,
-   "tokens": 1700,
+   "ms": 1685,
+   "tokens": 1204,
    "errors": 2,
    "fixed": 2,
    "kept": null
@@ -333,9 +620,12 @@
    "valid": true,
    "corrected": "Wir haben keine Zeit, weil wir heute arbeiten müssen.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 3222,
-   "tokens": 1364,
+   "ms": 686,
+   "tokens": 952,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -345,9 +635,12 @@
    "valid": true,
    "corrected": "Ich interessiere mich sehr für Musik.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 3093,
-   "tokens": 1219,
+   "ms": 618,
+   "tokens": 952,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -357,9 +650,12 @@
    "valid": true,
    "corrected": "Gestern bin ich zum Arzt gegangen, weil ich Kopfschmerzen hatte.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 2797,
-   "tokens": 1196,
+   "ms": 774,
+   "tokens": 956,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -369,9 +665,12 @@
    "valid": true,
    "corrected": "Ich arbeite als Verkäuferin in einem Supermarkt.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "A2",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 3261,
-   "tokens": 1319,
+   "ms": 858,
+   "tokens": 1003,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -381,9 +680,21 @@
    "valid": true,
    "corrected": "Ich habe den Film nicht gesehen, weil ich keine Zeit gehabt habe.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "gehabt.",
+     "replacement": "gehabt habe.",
+     "category": "auxiliary",
+     "severity": "error",
+     "hint": "Which verb is missing at the end with 'weil'?",
+     "rule": "In Perfekt, you need an auxiliary verb with the participle."
+    }
+   ],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 6904,
-   "tokens": 2248,
+   "ms": 2059,
+   "tokens": 1335,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -393,9 +704,21 @@
    "valid": true,
    "corrected": "Der Arzt hat gesagt, dass ich mehr schlafen soll.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "ich soll mehr schlafen",
+     "replacement": "ich mehr schlafen soll",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'dass'?",
+     "rule": "In a side clause with 'dass', the conjugated verb goes to the end."
+    }
+   ],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 6903,
-   "tokens": 1923,
+   "ms": 1124,
+   "tokens": 1165,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -405,9 +728,21 @@
    "valid": true,
    "corrected": "Das ist der Mann, den ich gestern gesehen habe.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "der ich",
+     "replacement": "den ich",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case is the man in your sentence?",
+     "rule": "Use accusative for the direct object in a relative clause."
+    }
+   ],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 4419,
-   "tokens": 1418,
+   "ms": 1064,
+   "tokens": 1137,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -417,9 +752,21 @@
    "valid": true,
    "corrected": "Sie hat zwei Kinder, einen Sohn und eine Tochter.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "ein Sohn",
+     "replacement": "einen Sohn",
+     "category": "case",
+     "severity": "error",
+     "hint": "Which case comes after 'haben'?",
+     "rule": "After 'haben' the direct object needs Akkusativ."
+    }
+   ],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 7293,
-   "tokens": 2117,
+   "ms": 1168,
+   "tokens": 1091,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -429,9 +776,21 @@
    "valid": true,
    "corrected": "Ich weiß nicht, ob er morgen kommt.",
    "edits": 1,
+   "edit_list": [
+    {
+     "original": "kommt morgen",
+     "replacement": "morgen kommt",
+     "category": "verb_position",
+     "severity": "error",
+     "hint": "Where does the verb go after 'ob'?",
+     "rule": "In a side clause with 'ob', the conjugated verb goes to the end."
+    }
+   ],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 1,
-   "ms": 3295,
-   "tokens": 1423,
+   "ms": 1458,
+   "tokens": 1165,
    "errors": 1,
    "fixed": 1,
    "kept": null
@@ -441,9 +800,12 @@
    "valid": true,
    "corrected": "Das Buch, das ich gestern gekauft habe, ist sehr interessant.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 2543,
-   "tokens": 1172,
+   "ms": 966,
+   "tokens": 989,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -453,9 +815,12 @@
    "valid": true,
    "corrected": "Obwohl es geregnet hat, sind wir spazieren gegangen.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 2535,
-   "tokens": 1306,
+   "ms": 1175,
+   "tokens": 996,
    "errors": 0,
    "fixed": 0,
    "kept": true
@@ -465,9 +830,12 @@
    "valid": true,
    "corrected": "Ich danke dir für deine Hilfe bei dem Umzug.",
    "edits": 0,
+   "edit_list": [],
+   "level_estimate": "B1",
+   "hint_spoils": 0,
    "grounded": 0,
-   "ms": 2819,
-   "tokens": 1205,
+   "ms": 1046,
+   "tokens": 1049,
    "errors": 0,
    "fixed": 0,
    "kept": true

@@ -862,11 +862,18 @@ async function loadBoard() {
     const rows = await getJSON("/api/results");
     if (!rows.length) return;
     const pct = (x) => (x == null ? "–" : Math.round(x * 100) + " %");
-    const t = el("table", {}, el("tr", {}, ...["Model", "Errors fixed", "Clean sentences left alone", "Valid format", "Avg time"].map((h) => el("th", {}, h))));
-    for (const r of rows) t.append(el("tr", {}, el("td", {}, r.model + (r.open_weight ? " (open)" : "")),
-      el("td", {}, `${pct(r.recall)} (${r.errors_fixed}/${r.errors_total})`), el("td", {}, pct(r.clean_kept)),
-      el("td", {}, pct(r.valid_rate)), el("td", {}, (r.avg_ms / 1000).toFixed(1) + " s")));
-    $("board").replaceChildren(t, el("p", { class: "note" }, `Test set: ${rows[0].items} sentences, run ${rows.map((r) => r.date).join(", ")}.`));
+    const SET = { basic: "Basic, A1 to B1", hard: "Hard, B2 and C1" };
+    rows.sort((a, b) => (a.set || "basic").localeCompare(b.set || "basic"));
+    const t = el("table", {}, el("tr", {}, ...["Test set", "Model", "Errors fixed", "Correct left alone", "Avg time"].map((h) => el("th", {}, h))));
+    for (const r of rows) t.append(el("tr", {},
+      el("td", {}, `${SET[r.set || "basic"] || r.set} (${r.items})`),
+      el("td", {}, r.model + (r.open_weight ? " (open)" : "")),
+      el("td", {}, `${r.errors_fixed} of ${r.errors_total}`),
+      el("td", {}, r.clean_kept == null ? "–" : `${pct(r.clean_kept)}`),
+      el("td", {}, (r.avg_ms / 1000).toFixed(1) + " s")));
+    const dates = [...new Set(rows.map((r) => r.date))].join(", ");
+    $("board").replaceChildren(t, el("p", { class: "note" },
+      `Run ${dates} in grammar mode. The sentences are small sets I wrote; no teacher has reviewed them yet.`));
   } catch { /* the scoreboard is optional */ }
 }
 
