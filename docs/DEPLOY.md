@@ -1,8 +1,8 @@
 # Run Vogi as a Hugging Face Space
 
 The Space runs the same code as a laptop, in Docker. The API key is a Space secret, so the
-browser never sees it. With `VOGI_ACCESS_CODE` set, every `/api` call needs that code, and two
-limits protect the credits: 60 model calls per visitor per hour and 400 per day in total.
+browser never sees it. With `VOGI_ACCESS_CODE` set, every `/api` call needs that code. Two limits
+protect the credits: 60 model calls per visitor per hour and 400 per day in total.
 
 ## Steps (about 15 minutes)
 
