@@ -13,7 +13,7 @@ Use the real model (`muse-spark-1.3`), never the fake host.
 | 2:05–2:45 | Talk tab, "At the bakery". Speak two lines, end the talk, show the mission ticks and the feedback | "Writing is half of it. In Talk I speak with a baker. She stays at my level and does not interrupt me. Afterwards Vogi marks my spoken mistakes the same way. Muse Voice Transcribe writes down what I said, mistakes included." |
 | 2:45–3:00 | The score table, then the repo README | "On my test set, Muse Spark fixed 28 of 28 errors. Everything here was built during the hackathon. Vogi: write and speak German, and learn from your own mistakes." |
 
-The times above leave out the "Sound natural" beat. Add it back only if the video runs short.
+The times above leave out the "Sound natural" beat. If the video runs short, add it back.
 
 ## Text for the handwritten photo
 
