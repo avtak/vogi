@@ -108,6 +108,7 @@ ins { color: var(--ins); background: var(--ins-bg); text-decoration: none; borde
 #marked { white-space: pre-line; }
 mark.miss { background: var(--del-bg); color: var(--del); border-bottom: 2px solid var(--del); border-radius: 4px; padding: 0 2px; }
 mark.miss.done { background: var(--ins-bg); color: var(--ins); border-color: var(--ins); }
+mark.miss.shown { background: var(--warn-bg); color: var(--ink); border-color: #d9a400; }
 mark.miss.now { outline: 2px solid var(--del); outline-offset: 1px; }
 mark.miss sup { font-size: 11px; font-weight: 700; margin-right: 2px; }
 .trylist li { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); }
@@ -200,3 +201,4 @@ th { color: var(--muted); font-weight: 600; }
 #v-code .big-btn { width: 100%; }
 .scene-pic { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; margin-bottom: 8px; background: var(--line); }
 .talk-pic { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; margin: 4px 0 10px; }
+@media (max-width: 480px) { .lvw { display: none; } }

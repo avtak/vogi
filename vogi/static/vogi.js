@@ -80,7 +80,7 @@ function setLevel(lv) {
   if (!LEVELS.includes(lv) && MAINS.concat("A0").includes(lv)) lv = firstStep(main(lv)); // levels saved before 31.10
   if (!LEVELS.includes(lv)) return;
   state.level = lv; store(LEVEL_KEY, lv);
-  $("level-chip").replaceChildren("Level: ", el("b", {}, `${LEVEL_WORDS[lv]} (${lv})`), el("u", {}, "change"));
+  $("level-chip").replaceChildren(el("span", { class: "lvw" }, "Level: "), el("b", {}, el("span", { class: "lvw" }, `${LEVEL_WORDS[lv]} `), `(${lv})`), " ", el("u", {}, "change"));
   $("level-chip").classList.remove("hidden");
 }
 function showSlider(i) {
@@ -135,9 +135,15 @@ function diff(a, b) {
 
 function renderDiff(a, b) {
   const box = $("diff"); box.replaceChildren();
-  diff(a, b).forEach(([t, words], k) => {
-    if (k) box.append(" ");
-    box.append(t === "eq" ? words.join(" ") : el(t, {}, words.join(" ")));
+  // Keep one line per line (a spoken turn in Talk) when both texts have the same number of lines.
+  const la = a.split("\n"), lb = b.split("\n");
+  const pairs = la.length === lb.length ? la.map((x, i) => [x, lb[i]]) : [[a, b]];
+  pairs.forEach(([x, y], line) => {
+    if (line) box.append(el("br"));
+    diff(x, y).forEach(([t, words], k) => {
+      if (k) box.append(" ");
+      box.append(t === "eq" ? words.join(" ") : el(t, {}, words.join(" ")));
+    });
   });
 }
 
@@ -166,7 +172,7 @@ function renderResult(data) {
   const box = $("checks"); box.replaceChildren();
   box.className = "checks" + (c.warnings.length ? " warn" : "");
   box.append(el("strong", {}, "Vogi checked its own answer: "),
-    `${c.grounded} of ${c.total} changes point at words that are really in your text.`);
+    c.total ? `${c.grounded} of ${c.total} changes point at words that are really in your text.` : "Nothing to change.");
   for (const w of c.warnings) box.append(el("br"), "⚠ " + w);
   const m = data.meta;
   $("meta").textContent = `${m.model}${m.open_weight ? " (open weights)" : ""} · ${(m.ms / 1000).toFixed(1)} s · ` +
@@ -232,7 +238,7 @@ function renderTry(items) {
       fb.className = "fb " + (byLearner ? "ok" : "no");
       fb.replaceChildren((byLearner ? "✓ " : "") + msg, el("span", { class: "rule" }, e.rule));
       li.classList.add("closed");
-      if (markEl[n]) markEl[n].classList.add("done");
+      if (markEl[n]) markEl[n].classList.add(byLearner ? "done" : "shown"); // fixed: green, shown: amber
       progress(); open(k + 1);
     };
     check.onclick = async () => {

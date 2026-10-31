@@ -118,7 +118,8 @@ def read_image(p: Provider, image: bytes, mime: str) -> dict:
             {"type": "image_url", "image_url": {"url": url}},
         ]},
     ]
-    result, meta = ask(p, messages, Reading)
+    # low reasoning: 5.5 s instead of 18.6 s on a real notebook page, same text (tested 01.11.2026)
+    result, meta = ask(p, messages, Reading, effort="low")
     return {"result": result.model_dump(), "meta": meta}
 
 
