@@ -51,6 +51,7 @@ language app, Sprachvogel.
 | Red pen | `/api/locate` | Muse Spark's perception grounding boxes each wrong word on the photo (0-1000 grid). The photo is sent upright, and each word comes with its line, so the right copy of a repeated word is found |
 | Level estimate | `level_estimate` in every correction | The CEFR level a text shows, by range of grammar and words, not by the number of mistakes |
 | Talk | `vogi/scenes.py`, `/api/talk`, `/api/live` | The page streams the microphone (24 kHz PCM) to Vogi's server, which relays it to Muse Voice Transcribe's realtime socket, so the API key never reaches the browser. Endpointing marks the end of each sentence, and a short pause to think joins the same line. The partner runs at `reasoning_effort="minimal"` (about 2 s a turn) and never corrects mid-talk |
+| Scene pictures | `/api/scene-image/{scene}` | Muse Image draws each everyday scene, with no text in the picture, so the learner sees where they are before they speak |
 | Memory | `vogi/static/vogi.js` | Mistakes and checked pages are kept in the browser (localStorage, IndexedDB). No accounts, no server storage |
 | Test set and score | `eval/` | 56 German sentences with known errors (or none) and a scorer that runs the same set on any model |
 | Hosting | `Dockerfile`, `docs/DEPLOY.md` | An access code and per-visitor and daily limits protect the credits on the public demo |
@@ -61,6 +62,7 @@ language app, Sprachvogel.
 |---|---|---|
 | `muse-spark-1.3` | Meta Model API | Correction, reading handwriting, locating mistakes on the photo, level estimate, exercises, judging answers, the role-play partner |
 | `muse-voice-transcribe-1.0` | Meta Model API (realtime socket; file upload as fallback) | Writing down what the learner says, mistakes included |
+| `muse-image-1.0` | Meta Model API | One picture per Talk scene, made when the server starts and kept (5 pictures, about $0.05) |
 | Muse Spark Open | Partner hosts (Baseten, Fireworks, Together) | The same correction behind the same format, ready to score on the same test set once a partner key is available |
 
 The partner's voice in Talk is the browser's built-in text-to-speech, because the Model API has no

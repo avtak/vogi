@@ -483,11 +483,25 @@ async function loadScenes() {
   try {
     const list = await getJSON("/api/scenes");
     $("scenes").replaceChildren(...list.map((sc) => {
-      const b = el("button", { class: "scene" }, el("strong", {}, sc.title), el("small", {}, sc.goals.join(" · ")));
+      const pic = el("img", { class: "scene-pic", alt: "" });
+      const b = el("button", { class: "scene" }, pic, el("strong", {}, sc.title), el("small", {}, sc.goals.join(" · ")));
       b.onclick = () => startScene(sc);
+      scenePicture(sc.id).then((url) => { if (url) pic.src = url; else pic.remove(); });
       return b;
     }));
   } catch { /* the server is down: loadProviders says so */ }
+}
+
+// Scene pictures come from Muse Image. The server makes each one once; the page keeps the URL.
+const pictures = {};
+function scenePicture(id) {
+  if (!pictures[id]) {
+    pictures[id] = fetch(`/api/scene-image/${id}`, { headers: codeHeader() })
+      .then((r) => (r.ok ? r.blob() : null))
+      .then((b) => (b ? URL.createObjectURL(b) : null))
+      .catch(() => null);
+  }
+  return pictures[id];
 }
 
 function bubble(role, text, turn = null) {
@@ -559,6 +573,8 @@ function startScene(sc) {
   Object.assign(talk, { scene: sc, history: [], busy: false, goalsDone: 0, handsFree: true, ended: false });
   $("talk-hint").classList.add("hidden"); $("end-talk").disabled = false;
   $("scene-title").textContent = sc.title;
+  $("talk-pic").classList.add("hidden");
+  scenePicture(sc.id).then((url) => { if (url && talk.scene === sc) { $("talk-pic").src = url; $("talk-pic").classList.remove("hidden"); } });
   $("goals").replaceChildren(...sc.goals.map((g) => el("li", {}, g)));
   $("chat").replaceChildren();
   $("scene-pick").classList.add("hidden"); $("talk").classList.remove("hidden");
@@ -873,7 +889,7 @@ async function loadBoard() {
       el("td", {}, (r.avg_ms / 1000).toFixed(1) + " s")));
     const dates = [...new Set(rows.map((r) => r.date))].join(", ");
     $("board").replaceChildren(t, el("p", { class: "note" },
-      `Run ${dates} in grammar mode. The sentences are small sets I wrote; no teacher has reviewed them yet.`));
+      `Run ${dates} in grammar mode. The sentences are small sets I wrote. No teacher has reviewed them yet.`));
   } catch { /* the scoreboard is optional */ }
 }
 

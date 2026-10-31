@@ -15,16 +15,20 @@ zoom 125 %. Speak slowly. One take per part is fine. Cut the parts together afte
 
 ## The script
 
-| Time | Screen | Say |
-|---|---|---|
-| 0:00–0:15 | Your face or the Vogi home screen | "I am Daniel. I learn German in Leipzig. When I ask a chatbot to correct my German, it rewrites everything. I learn nothing, and tomorrow it forgets my mistakes." |
-| 0:15–0:25 | Home: the three choices | "This is Vogi. It works like a teacher's red pen, not a ghostwriter. No prompt. I just pick what I want to do." |
-| 0:25–1:05 | Check my writing. Type `Gestern ich habe mit mein Bruder Fußball gespielt.` and press Check. Fix mistake 1 right away. Type a wrong fix for mistake 2, read the hint, then fix it | "I write a sentence. Vogi does not show me the answer. It marks where my mistakes are and gives me a hint. I fix them myself. If I am wrong, it helps me again. Then it shows the rule." |
-| 1:05–1:40 | Camera button, upload the notebook photo. Show the text Vogi read, press Check, scroll to the highlighted page | "Most learners write homework by hand. Muse Spark reads my notebook and copies it with my mistakes. Then it finds each mistake on the photo and highlights it on my own page." |
-| 1:40–2:25 | Home, Practise speaking, At the bakery. Speak two lines, for example `Guten Morgen, ich möchte drei Brötchen.` and `Was kostet das?`. Then End and get feedback | "Writing is half of it. This is not a free chat. It is a real scene with a mission: buy bread at the bakery. I speak hands-free, and Muse Voice Transcribe writes my words while I talk. The baker stays at my level and gives me words I can use. At the end, Vogi grades what I said." |
-| 2:25–2:40 | Home, My progress: the mistake bars and My pages | "Vogi remembers my mistakes. It trains me on the ones that keep coming back, and it keeps every page I checked." |
-| 2:40–2:55 | Open "How Vogi works": the self-check line and the score table | "Under the hood, Vogi checks every answer with its own code before I see it. On a test set of 56 sentences, Muse Spark fixed every error and left every correct sentence alone." |
-| 2:55–3:00 | The GitHub page | "Everything was built during the hackathon. Next, Vogi goes into my language app, Sprachvogel. Thank you." |
+Each time a model works, put a small caption on screen, for example "Muse Spark 1.3 · vision" or
+"Muse Voice Transcribe · realtime". Judges score the use of Meta's models from the video. Cut
+every model wait out of the video, or speak over it.
+
+| Time | Screen | Caption | Say |
+|---|---|---|---|
+| 0:00–0:12 | Your face or the Vogi home screen | | "I am Daniel. I learn German in Leipzig. A chatbot rewrites my German, so I learn nothing. And tomorrow it forgets my mistakes." |
+| 0:12–0:20 | Home: the three choices | | "This is Vogi. It works like a teacher's red pen, not a ghostwriter. No prompts." |
+| 0:20–0:55 | Check my writing, camera button, upload the notebook photo. Show the text Vogi read, press Check, show the highlighted page | Muse Spark 1.3 · reads handwriting · finds each word on the photo | "Most learners write homework by hand. Muse Spark reads my notebook and copies it with my mistakes. Then it finds each mistake on the photo and highlights it on my own page." |
+| 0:55–1:30 | Type `Ich habe ein Kuchen gegessen.` and press Check. Type a wrong fix (`einem Kuchen`), read the second hint, then type `einen Kuchen` | Muse Spark 1.3 · structured output | "Vogi never shows me the answer first. It marks the mistake and gives me a hint. I try. If I am wrong, it gives me a second hint, still not the answer. When I get it right, it shows the rule." |
+| 1:30–2:15 | Home, Practise speaking. Show the scene pictures, pick At the bakery. Speak two lines and let the words appear live. End and get feedback, show the mission ticks | Muse Image · scene · Muse Voice Transcribe · realtime · Muse Spark 1.3 · partner | "This is not a free chat. It is a real scene with a mission: buy bread at the bakery. Muse Image drew the scene. I speak hands-free, and Muse Voice Transcribe writes my words while I talk. The baker stays at my level and gives me words I can use. At the end, Vogi grades what I said." |
+| 2:15–2:30 | Home, My progress: the mistake bars and My pages | | "Vogi remembers my mistakes, in my browser only. It trains me on the ones that keep coming back." |
+| 2:30–2:50 | Open "How Vogi works": the self-check line and the score table | | "Before I see an answer, Vogi checks it with its own code. On 56 test sentences I wrote, Muse Spark fixed every error, left every correct sentence alone, and answered in about one and a half seconds." |
+| 2:50–3:00 | `git log` in a terminal, then the GitHub page | | "Everything was built during the hackathon, starting on 31 October. Next, Vogi goes into my language app, Sprachvogel." |
 
 ## If something goes wrong while recording
 

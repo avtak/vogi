@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import tempfile
+import threading
 import json
 import os
 import time
@@ -16,7 +18,7 @@ import openai
 import websockets
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
@@ -213,6 +215,47 @@ async def locate(image: UploadFile = File(...), originals: str = Form(...), prov
 @app.get("/api/scenes")
 def list_scenes():
     return scenes.public()
+
+
+SCENE_CACHE = Path(os.environ.get("VOGI_CACHE_DIR", tempfile.gettempdir())) / "vogi-scenes"
+_scene_lock = threading.Lock()
+
+
+def _scene_picture(scene_id: str) -> Path:
+    """One Muse Image picture per scene, made once and kept on disk (5 pictures, about $0.05)."""
+    path = SCENE_CACHE / f"{scene_id}.webp"
+    with _scene_lock:
+        if not path.exists():
+            data = core.scene_image(providers.get("meta"), scenes.SCENES[scene_id])
+            SCENE_CACHE.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+    return path
+
+
+@app.on_event("startup")
+def _make_scene_pictures():
+    """Make the pictures in the background after a start, so no learner waits about 11 s for one."""
+    if not os.environ.get("MODEL_API_KEY") or os.environ.get("VOGI_SCENE_PICTURES") == "0":
+        return
+
+    def work():
+        for sid in scenes.SCENES:
+            try:
+                _scene_picture(sid)
+            except Exception as e:  # a missing picture must not stop the app
+                print(f"scene picture {sid} failed: {type(e).__name__}", flush=True)
+
+    threading.Thread(target=work, daemon=True).start()
+
+
+@app.get("/api/scene-image/{scene_id}")
+def scene_image(scene_id: str):
+    if scene_id not in scenes.SCENES:
+        raise HTTPException(404, "Unknown scene.")
+    if not os.environ.get("MODEL_API_KEY"):
+        raise HTTPException(404, "Scene pictures need the Meta Model API.")
+    path = _run(_scene_picture, scene_id)
+    return Response(path.read_bytes(), media_type="image/webp", headers={"Cache-Control": "max-age=86400"})
 
 
 @app.post("/api/talk")

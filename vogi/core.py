@@ -183,6 +183,18 @@ def transcribe(wav: bytes, keywords: list[str] | None = None) -> dict:
             "ms": round((time.perf_counter() - started) * 1000), "model": "muse-voice-transcribe-1.0"}
 
 
+def scene_image(p: Provider, scene: dict) -> bytes:
+    """A picture of the Talk scene from Muse Image (dev.meta.ai/docs/image-generation, $0.01 each)."""
+    prompt = (
+        "A warm, friendly flat illustration of an everyday scene in Germany, seen from the point of view of "
+        f"the person who walks in. Scene: {scene['setting']} The other person: {scene['partner']} "
+        "Soft colours, simple shapes, calm mood. No text, no letters, no words on signs."
+    )
+    r = client(p).images.generate(model="muse-image-1.0", prompt=prompt, n=1, size="1792x1024",
+                                  response_format="b64_json", extra_body={"output_format": "webp"})
+    return base64.b64decode(r.data[0].b64_json)
+
+
 def exercises(p: Provider, level: str, edits: list[dict]) -> dict:
     result, meta = ask(p, prompts.exercise_messages(level, edits), Exercises, effort="low")
     return {"result": result.model_dump(), "meta": meta}
