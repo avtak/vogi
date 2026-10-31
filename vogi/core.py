@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import base64
+import io
 import json
+import logging
 import os
+import random
 import re
 import time
-import io
 from difflib import SequenceMatcher
 from typing import TypeVar
 
@@ -21,9 +23,11 @@ from .providers import Provider, client
 from .schema import Correction, Exercises, Marks, PartnerTurn, Reading, Verdict, json_schema
 
 T = TypeVar("T", bound=BaseModel)
+log = logging.getLogger("vogi")
+_http = httpx.Client(timeout=httpx.Timeout(45, connect=5))
 
 # Standard-mode prices per 1M tokens for muse-spark-1.3 (dev.meta.ai/docs/pricing-rate-limits, 31.10.2026).
-PRICE_IN, PRICE_OUT = 1.25, 4.25
+PRICE_IN, PRICE_CACHED, PRICE_OUT = 1.25, 0.15, 4.25
 
 
 def _strip_fences(s: str) -> str:
@@ -41,24 +45,31 @@ def ask(p: Provider, messages: list[dict], model: type[T], effort: str | None = 
     schema = json_schema(model)
     fmt = {"type": "json_schema", "json_schema": {"name": model.__name__, "strict": True, "schema": schema}}
     started = time.perf_counter()
-    mode = "native-schema"
-    attempts = 0
-    msgs = messages
+    # A host without structured output (Baseten for Muse Spark Open) gets the schema in the prompt.
+    mode = "native-schema" if p.native_schema else "schema-in-prompt"
+    msgs = messages if p.native_schema else _with_schema(messages, schema)
+    attempts, tin, tout, cached = 0, 0, 0, 0
     while True:
         attempts += 1
         try:
-            kwargs = {"response_format": fmt} if (p.native_schema and mode == "native-schema") else {}
+            kwargs = {"response_format": fmt} if mode == "native-schema" else {}
             if effort and p.id == "meta":
                 kwargs["reasoning_effort"] = effort
             resp = client(p).chat.completions.create(model=p.model, messages=msgs, **kwargs)
         except openai.BadRequestError:
-            if mode != "native-schema":
+            # On Meta a 400 means the request itself needs fixing (dev.meta.ai/docs/error-handling):
+            # do not hide it behind a second call. Other hosts may simply not take json_schema.
+            if mode != "native-schema" or p.id == "meta":
                 raise
-            # The host does not take json_schema: put the schema in the prompt instead.
             mode = "schema-in-prompt"
-            msgs = messages + [{"role": "user", "content": "Answer with JSON only, matching this schema:\n"
-                                + json.dumps(schema)}]
+            msgs = _with_schema(messages, schema)
             continue
+        u = resp.usage
+        if u:
+            tin += u.prompt_tokens
+            tout += u.completion_tokens
+            details = getattr(u, "prompt_tokens_details", None)
+            cached += (getattr(details, "cached_tokens", 0) or 0) if details else 0
         raw = resp.choices[0].message.content or ""
         try:
             obj = model.model_validate_json(_strip_fences(raw))
@@ -68,14 +79,21 @@ def ask(p: Provider, messages: list[dict], model: type[T], effort: str | None = 
                 raise
             msgs = msgs + [{"role": "assistant", "content": raw},
                            {"role": "user", "content": "That did not match the schema. Return only the JSON object."}]
-    u = resp.usage
-    tin, tout = (u.prompt_tokens, u.completion_tokens) if u else (0, 0)
+    usd = ((tin - cached) * PRICE_IN + cached * PRICE_CACHED + tout * PRICE_OUT) / 1e6
     return obj, {
         "provider": p.id, "model": p.model, "open_weight": p.open_weight, "format": mode,
         "attempts": attempts, "ms": round((time.perf_counter() - started) * 1000),
-        "tokens_in": tin, "tokens_out": tout,
-        "usd_estimate": round((tin * PRICE_IN + tout * PRICE_OUT) / 1e6, 5) if p.id == "meta" else None,
+        "tokens_in": tin, "tokens_out": tout, "tokens_cached": cached,
+        "usd_estimate": round(usd, 5) if p.id == "meta" else None,
     }
+
+
+def _with_schema(messages: list[dict], schema: dict) -> list[dict]:
+    """Put the JSON schema into the system message, for hosts without structured output."""
+    note = "\n\nAnswer with JSON only, matching this schema:\n" + json.dumps(schema)
+    if messages and messages[0]["role"] == "system":
+        return [{**messages[0], "content": messages[0]["content"] + note}] + messages[1:]
+    return [{"role": "system", "content": note.strip()}] + messages
 
 
 def correct(p: Provider, text: str, level: str, mode: str, spoken: bool = False) -> dict:
@@ -91,7 +109,8 @@ def _data_url(image: bytes, mime: str) -> str:
 
 
 def read_image(p: Provider, image: bytes, mime: str) -> dict:
-    url = _data_url(image, mime)
+    # upright and at most 2048 px, as for locate: cost grows with resolution (dev.meta.ai/docs/image-understanding)
+    url = _jpeg_url(_upright(image))
     messages = [
         {"role": "system", "content": prompts.READ_SYSTEM},
         {"role": "user", "content": [
@@ -170,12 +189,14 @@ def transcribe(wav: bytes, keywords: list[str] | None = None) -> dict:
         # short phrases like "drei Brötchen" that are easy to mishear.
         request["keywords"] = keywords[:40]
     started = time.perf_counter()
-    r = httpx.post(
-        "https://api.meta.ai/v1/asr/transcribe",
-        headers={"Authorization": f"Bearer {key}"},
-        files={"request": (None, json.dumps(request), "application/json"), "audio": ("speech.wav", wav, "audio/wav")},
-        timeout=60,
-    )
+    files = {"request": (None, json.dumps(request), "application/json"), "audio": ("speech.wav", wav, "audio/wav")}
+    for attempt in range(3):
+        # 429 and 5xx: retry with backoff (dev.meta.ai/docs/speech-to-text)
+        r = _http.post("https://api.meta.ai/v1/asr/transcribe", headers={"Authorization": f"Bearer {key}"},
+                       files=files)
+        if r.status_code not in (429, 500, 502, 503) or attempt == 2:
+            break
+        time.sleep(0.5 * (attempt + 1) + random.random() * 0.3)
     r.raise_for_status()
     d = r.json()
     text = re.sub(r"([.!?])\1+$", r"\1", (d.get("transcript") or "").strip())

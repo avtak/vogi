@@ -10,6 +10,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+import httpx
 from openai import OpenAI
 
 
@@ -106,6 +107,9 @@ _clients: dict[str, OpenAI] = {}
 def client(p: Provider) -> OpenAI:
     if p.id not in _clients:
         _clients[p.id] = OpenAI(
-            base_url=p.base_url, api_key=os.environ.get(p.key_env, "none"), timeout=120,
+            base_url=p.base_url, api_key=os.environ.get(p.key_env, "none"),
+            # A stalled call must not hang for minutes: the SDK default is 2 retries that wait out
+            # Retry-After (dev.meta.ai/docs/error-handling: 503 asks for 60 s, 504 says do not just retry).
+            timeout=httpx.Timeout(45, connect=5), max_retries=1,
         )
     return _clients[p.id]

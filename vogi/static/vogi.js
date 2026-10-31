@@ -687,7 +687,7 @@ async function stopListening() {
   return t;
 }
 
-// Microphone: record, downsample to 16 kHz mono 16-bit WAV (what Muse Voice Transcribe takes), send.
+// Microphone: record, resample to 24 kHz mono 16-bit (Muse Voice Transcribe takes 16 or 24 kHz), send.
 let rec = null;
 async function startRec() {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
@@ -704,7 +704,7 @@ async function startRec() {
   rec = { stream, ctx, src, proc, chunks, rate: ctx.sampleRate, timer: setTimeout(() => toggleMic(), 60000) };
 }
 
-const RATE = 24000; // Muse Voice Transcribe takes 16 or 24 kHz; 24 kHz is its native rate
+const RATE = 24000; // Muse Voice Transcribe takes 16 or 24 kHz (PCM_24KHZ in the realtime handshake)
 
 function keywordsNow() {
   // Bias the recogniser to this scene's words and the words on screen.

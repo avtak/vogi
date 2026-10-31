@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import json
+import logging
+import os
 import tempfile
 import threading
-import json
-import os
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -39,6 +40,7 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 # Hosted mode (a public Hugging Face Space): set VOGI_ACCESS_CODE. Then every /api call needs the
 # code, and simple limits protect the key's credits. Without it (a laptop), nothing changes.
+log = logging.getLogger("vogi")
 ACCESS_CODE = os.environ.get("VOGI_ACCESS_CODE", "")
 HOURLY_PER_VISITOR = int(os.environ.get("VOGI_HOURLY_LIMIT", "60"))
 DAILY_TOTAL = int(os.environ.get("VOGI_DAILY_LIMIT", "400"))  # about $2 to $5 a day at most
@@ -160,10 +162,22 @@ def _run(fn, *args):
     try:
         return fn(*args)
     except openai.APIStatusError as e:
-        raise HTTPException(502, f"The model host answered {e.status_code}: {e.message}") from e
+        body = e.body if isinstance(e.body, dict) else {}
+        log.warning("model host %s: type=%s code=%s param=%s", e.status_code, body.get("type"),
+                    body.get("code"), body.get("param"))
+        if e.status_code in (429, 503):
+            raise HTTPException(503, "The model is busy. Please try again in a moment.") from e
+        if e.status_code == 400 and body.get("code") == "content_policy_violation":
+            raise HTTPException(400, "The model refused this request.") from e
+        raise HTTPException(502, f"The model host answered {e.status_code}.") from e
+    except openai.APITimeoutError as e:
+        log.warning("model host timeout")
+        raise HTTPException(504, "The model took too long. Please try again.") from e
     except openai.APIConnectionError as e:
+        log.warning("model host unreachable")
         raise HTTPException(502, "Could not reach the model host.") from e
     except ValidationError as e:
+        log.warning("answer did not match the schema twice")
         raise HTTPException(502, "The model's answer did not match Vogi's format twice.") from e
 
 
@@ -364,8 +378,12 @@ async def live(ws: WebSocket):
                         if sent > LIVE_MAX_BYTES:
                             break
                         await up.send(m["bytes"])
-                    elif m.get("text") and json.loads(m["text"]).get("type") == "endStream":
-                        break
+                    elif m.get("text"):
+                        try:
+                            if json.loads(m["text"]).get("type") == "endStream":
+                                break
+                        except (ValueError, AttributeError):
+                            pass
                 await up.send(json.dumps({"type": "endStream"}))
                 await asyncio.wait_for(down, 20)
             except asyncio.TimeoutError:
