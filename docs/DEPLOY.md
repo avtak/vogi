@@ -16,10 +16,13 @@ and 400 per day in total.
    - `MODEL_API_KEY`: the Meta Model API key.
    - `VOGI_ACCESS_CODE`: a code of your choice. Put it in the hackathon submission for the judges.
 3. Optional variables: `VOGI_HOURLY_LIMIT` (default 60) and `VOGI_DAILY_LIMIT` (default 400).
-4. Push the code from this folder. The new Space already has one commit (its own README), and
-   this push replaces it:
+4. Push the code from this folder. The new Space already has one commit (its own README).
+   Join it first, keeping Vogi's files, so a normal push works:
    ```bash
-   git push --force space main
+   git remote add space https://huggingface.co/spaces/<your-user>/vogi
+   git fetch space
+   git merge -s ours --allow-unrelated-histories space/main -m "Join the Space's initial commit"
+   git push space main
    ```
    Git asks for a username (your Hugging Face name) and a password: use a Hugging Face access
    token with write rights (Settings, Access Tokens).
