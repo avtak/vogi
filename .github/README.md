@@ -75,8 +75,8 @@ is not used to train Meta models.
 | hard, 18 texts (several errors per text, B2 and C1 errors, correct sentences that look wrong) | `muse-spark-1.3` | 14 of 14 | 7 of 7 |
 
 With `reasoning_effort="minimal"` a check takes about 1.5 s on average (5 s at the model's default),
-with the same scores. Try first needs hints that do not give the answer, so the scorer also counts
-hints that contain the fix: 1 of 42, a fair choice question ("der, die or das?").
+with the same scores. Try first needs hints that do not give the answer. The scorer counts hints
+that contain the fix: 1 of 42, and that one is a fair choice question ("der, die or das?").
 
 The sets show that Muse Spark fixes sentence-level errors and leaves correct German alone. They are
 small and do not yet separate models. `eval/README.md` explains the method and its limits.

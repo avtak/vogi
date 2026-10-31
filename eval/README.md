@@ -27,7 +27,7 @@ errors (28 errors in all) and 11 that are correct. Each error lists the wrong wo
 
 The second pair is the setting the app uses: `reasoning_effort="minimal"`. A sentence takes 1.3 s
 and 1.5 s on average instead of 4.1 s and 7.1 s. The result files now keep every edit and its hint.
-"Hint spoils" counts hints that contain all the new words of the fix: 1 of 28 and 0 of 14. The one
+The scorer counts a hint as a spoiler if it contains all the new words of the fix: 1 of 28 and 0 of 14. The one
 is a fair choice question ("Which word goes with Kind: der, die or das?").
 
 The hard set (`testset_hard.jsonl`, `uv run vogi-eval --set hard`) has several errors per text,
