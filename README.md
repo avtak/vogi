@@ -87,7 +87,7 @@ shows the same score table.
 - The test set is small, and no native-speaker teacher has reviewed it yet. It shows how the models compare. It does not prove that a model is accurate.
 - Vogi is not a chat. It has no free-text conversation.
 - The test set covers A1 to B1. Corrections at B2 to C2 are not scored yet.
-- "My mistakes" and "My pages" live in one browser. There are no accounts, and nothing is stored on a server.
+- "My mistakes" and "My pages" live in one browser. There are no accounts, and no server keeps any of it.
 
 ## Next
 
