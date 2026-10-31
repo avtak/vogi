@@ -1,9 +1,8 @@
 # Run Vogi as a Hugging Face Space
 
-Live: https://avtak-vogi.hf.space (Gradio SDK on **CPU upgrade**, $0.03 an hour while awake,
-sleeps after 15 minutes without visitors). `app.py` starts Vogi's own server. Gradio is only the
-runtime this Space type needs. ZeroGPU does not work: it stops any app without a `@spaces.GPU`
-function, and Vogi uses no GPU. Free CPU Basic needs a PRO account (31.10.2026).
+Live: https://avtak-vogi.hf.space (Docker SDK on **CPU upgrade**, $0.03 an hour while awake,
+sleeps after 15 minutes without visitors). The Space builds the `Dockerfile`. Free CPU Basic needs
+a PRO account, and ZeroGPU runs only Gradio apps with a `@spaces.GPU` function (31.10.2026).
 
 The API key is a Space secret, so the browser never sees it. With `VOGI_ACCESS_CODE` set, every
 `/api` call needs that code. Two limits protect the credits: 60 model calls per visitor per hour
@@ -11,7 +10,7 @@ and 400 per day in total.
 
 ## Steps (about 15 minutes)
 
-1. On huggingface.co/new-space: name `vogi`, license `mit`, SDK **Gradio**, template **Blank**,
+1. On huggingface.co/new-space: name `vogi`, license `mit`, SDK **Docker**, template **Blank**,
    hardware **Custom Hardware: CPU upgrade**, sleep after 15 minutes, visibility **Public**.
 2. In the Space, open Settings, then "Variables and secrets". Add two secrets:
    - `MODEL_API_KEY`: the Meta Model API key.
