@@ -34,10 +34,25 @@ function status(msg) { $("status").textContent = msg || ""; }
 function store(key, value) { try { localStorage.setItem(key, value); } catch { /* private window */ } }
 function stored(key) { try { return localStorage.getItem(key); } catch { return null; } }
 
+// Access code (only on a hosted copy): asked once, kept in this browser, sent with every call.
+const CODE_KEY = "vogi.code";
+const codeHeader = () => ({ "X-Vogi-Code": stored(CODE_KEY) || "" });
+async function getJSON(path) {
+  const res = await fetch(path, { headers: codeHeader() });
+  if (res.status === 401) { askCode(); throw new Error("access code needed"); }
+  return res.json();
+}
+function askCode(msg = "") {
+  $("code-msg").textContent = msg;
+  document.querySelectorAll(".view").forEach((v) => v.classList.toggle("hidden", v.id !== "v-code"));
+  $("code-in").focus();
+}
+
 async function api(path, body, isForm = false) {
   const res = await fetch(path, isForm
-    ? { method: "POST", body }
-    : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    ? { method: "POST", headers: codeHeader(), body }
+    : { method: "POST", headers: { "Content-Type": "application/json", ...codeHeader() }, body: JSON.stringify(body) });
+  if (res.status === 401) { askCode(); throw new Error("access code needed"); }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : `Error ${res.status}`);
   return data;
@@ -466,7 +481,7 @@ const MAX_TURNS = 8;
 
 async function loadScenes() {
   try {
-    const list = await (await fetch("/api/scenes")).json();
+    const list = await getJSON("/api/scenes");
     $("scenes").replaceChildren(...list.map((sc) => {
       const b = el("button", { class: "scene" }, el("strong", {}, sc.title), el("small", {}, sc.goals.join(" · ")));
       b.onclick = () => startScene(sc);
@@ -687,7 +702,7 @@ function keywordsNow() {
 let live = null;
 function startLive(opts = {}) {
   try {
-    const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/live`);
+    const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/live?code=${encodeURIComponent(stored(CODE_KEY) || "")}`);
     ws.binaryType = "arraybuffer";
     live = { ws, ready: false, queue: [], text: "", final: "", error: "", rs: { pos: 0, prev: 0 } };
     const me = live;
@@ -836,15 +851,15 @@ function removePhoto() {
 async function loadProviders() {
   const sel = $("provider");
   try {
-    const list = await (await fetch("/api/providers")).json();
+    const list = await getJSON("/api/providers");
     sel.replaceChildren(...list.map((p) => el("option", { value: p.id }, p.label)));
     if (!list.length) status("No model key found. See README: put MODEL_API_KEY in ~/.config/vogi/env.");
-  } catch { status("Vogi's server is not running."); }
+  } catch (e) { if (e.message !== "access code needed") status("Vogi's server is not running."); }
 }
 
 async function loadBoard() {
   try {
-    const rows = await (await fetch("/api/results")).json();
+    const rows = await getJSON("/api/results");
     if (!rows.length) return;
     const pct = (x) => (x == null ? "–" : Math.round(x * 100) + " %");
     const t = el("table", {}, el("tr", {}, ...["Model", "Errors fixed", "Clean sentences left alone", "Valid format", "Avg time"].map((h) => el("th", {}, h))));
@@ -907,5 +922,21 @@ $("pv-delete").onclick = async () => {
 optionsLine();
 const savedLevel = stored(LEVEL_KEY);
 setLevel(savedLevel);
-if (state.level) show("home", false); else { $("lv-range").value = 2; showSlider(2); show("level", false); }
+function startPage() {
+  if (state.level) show("home", false); else { $("lv-range").value = 2; showSlider(2); show("level", false); }
+}
+startPage();
+$("code-go").onclick = async () => {
+  const code = $("code-in").value.trim();
+  if (!code) return;
+  $("code-go").disabled = true;
+  try {
+    const res = await fetch("/api/access", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { $("code-msg").textContent = data.detail || "That code is not right."; return; }
+    store(CODE_KEY, code);
+    startPage(); loadProviders(); loadScenes(); loadBoard();
+  } finally { $("code-go").disabled = false; }
+};
+$("code-in").onkeydown = (e) => { if (e.key === "Enter") $("code-go").click(); };
 loadProviders(); loadBoard(); renderMemory(); loadScenes(); renderPages();

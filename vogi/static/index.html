@@ -13,6 +13,15 @@
 </header>
 
 <main>
+  <!-- Hosted copy only: the access code -->
+  <section class="view card hidden" id="v-code">
+    <h1>Welcome to Vogi</h1>
+    <p class="note">This demo needs an access code. You find it in the hackathon submission.</p>
+    <input type="text" id="code-in" maxlength="200" autocomplete="off" placeholder="Access code" aria-label="Access code">
+    <p class="note" id="code-msg" role="alert"></p>
+    <button class="btn primary big-btn" id="code-go">Open Vogi</button>
+  </section>
+
   <!-- First use: the level, in plain words -->
   <section class="view card hidden" id="v-level">
     <h1>How much German do you know?</h1>

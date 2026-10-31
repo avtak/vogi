@@ -1,3 +1,15 @@
+---
+title: Vogi
+emoji: 🐦
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+license: mit
+short_description: German writing and speaking coach on Meta's Muse models
+---
+
 # Vogi: a German writing and speaking coach on Meta's Muse models
 
 Vogi corrects German writing for adult learners, and the learner never writes a prompt.
@@ -85,6 +97,11 @@ uv run python -m tests.test_offline     # checks that need no key
 
 Vogi reads keys only from the environment or from `~/.config/vogi/env`, outside the repo.
 To try the page without a key, `tests/fake_host.py` serves canned answers. Its answers do not come from a model.
+
+## Live demo
+
+`docs/DEPLOY.md` runs Vogi as a Hugging Face Space. The key stays a server secret, an access
+code gates the API, and per-visitor and daily limits protect the credits.
 
 ## How good is it?
 

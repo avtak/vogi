@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
 import json
 import os
+import time
+from collections import defaultdict, deque
 from pathlib import Path
 from typing import Literal
 
 import httpx
 import openai
 import websockets
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
@@ -29,6 +33,77 @@ IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 providers.load_env_file()
 app = FastAPI(title="Vogi")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+
+
+# Hosted mode (a public Hugging Face Space): set VOGI_ACCESS_CODE. Then every /api call needs the
+# code, and simple limits protect the key's credits. Without it (a laptop), nothing changes.
+ACCESS_CODE = os.environ.get("VOGI_ACCESS_CODE", "")
+HOURLY_PER_VISITOR = int(os.environ.get("VOGI_HOURLY_LIMIT", "60"))
+DAILY_TOTAL = int(os.environ.get("VOGI_DAILY_LIMIT", "400"))  # about $2 to $5 a day at most
+MODEL_PATHS = {"/api/correct", "/api/read", "/api/locate", "/api/exercises", "/api/check", "/api/talk",
+               "/api/transcribe", "/api/live"}
+_visits: dict[str, deque] = defaultdict(deque)
+_day = {"date": "", "count": 0}
+_tries: dict[str, deque] = defaultdict(deque)
+
+
+def _visitor(headers, client) -> str:
+    fwd = headers.get("x-forwarded-for", "")
+    return fwd.split(",")[0].strip() or (client.host if client else "?")
+
+
+def _code_ok(code: str | None) -> bool:
+    return not ACCESS_CODE or hmac.compare_digest((code or "").encode(), ACCESS_CODE.encode())
+
+
+def _over_limit(who: str) -> str | None:
+    """One model call for this visitor. Returns a message if a limit is reached."""
+    if not ACCESS_CODE:
+        return None
+    now, today = time.time(), time.strftime("%Y-%m-%d")
+    if _day["date"] != today:
+        _day.update(date=today, count=0)
+    q = _visits[who]
+    while q and now - q[0] > 3600:
+        q.popleft()
+    if len(q) >= HOURLY_PER_VISITOR:
+        return "You reached the limit for this hour. Please try again later."
+    if _day["count"] >= DAILY_TOTAL:
+        return "Vogi reached its limit for today. Please try again tomorrow."
+    q.append(now)
+    _day["count"] += 1
+    return None
+
+
+@app.middleware("http")
+async def gate(request: Request, call_next):
+    path = request.url.path
+    if ACCESS_CODE and path.startswith("/api/") and path != "/api/access":
+        if not _code_ok(request.headers.get("x-vogi-code")):
+            return JSONResponse({"detail": "access code needed"}, status_code=401)
+        if path in MODEL_PATHS and request.method == "POST":
+            msg = _over_limit(_visitor(request.headers, request.client))
+            if msg:
+                return JSONResponse({"detail": msg}, status_code=429)
+    return await call_next(request)
+
+
+class AccessIn(BaseModel):
+    code: str = Field(max_length=200)
+
+
+@app.post("/api/access")
+def access(body: AccessIn, request: Request):
+    who = _visitor(request.headers, request.client)
+    q, now = _tries[who], time.time()
+    while q and now - q[0] > 3600:
+        q.popleft()
+    if len(q) >= 10:
+        raise HTTPException(429, "Too many tries. Please wait an hour.")
+    q.append(now)
+    if not _code_ok(body.code):
+        raise HTTPException(401, "That code is not right.")
+    return {"ok": True, "gated": bool(ACCESS_CODE)}
 
 
 @app.middleware("http")
@@ -178,6 +253,15 @@ async def live(ws: WebSocket):
     Transcribe's realtime socket (dev.meta.ai/docs/api-reference/voice/realtime) and sends the
     growing transcript back. The key never reaches the browser."""
     await ws.accept()
+    if not _code_ok(ws.query_params.get("code")):
+        await ws.send_json({"type": "error", "message": "access code needed"})
+        await ws.close(code=1008)
+        return
+    limit = _over_limit(_visitor(ws.headers, ws.client))
+    if limit:
+        await ws.send_json({"type": "error", "message": limit})
+        await ws.close(code=1008)
+        return
     key = os.environ.get("MODEL_API_KEY")
     if not key:
         await ws.send_json({"type": "error", "message": "Speech needs MODEL_API_KEY."})
@@ -272,8 +356,9 @@ def main() -> None:
     import uvicorn
 
     port = int(os.environ.get("VOGI_PORT", "8790"))
-    print(f"Vogi runs on http://127.0.0.1:{port}")
-    uvicorn.run(app, host="127.0.0.1", port=port)
+    host = os.environ.get("VOGI_HOST", "127.0.0.1")
+    print(f"Vogi runs on http://{host}:{port}")
+    uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":

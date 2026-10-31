@@ -196,3 +196,5 @@ th { color: var(--muted); font-weight: 600; }
 .review { align-self: stretch; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); }
 .review input { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
 .bubble.learner input { font: inherit; width: 100%; min-width: 200px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+#code-in { width: 100%; font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); margin: 8px 0; }
+#v-code .big-btn { width: 100%; }
