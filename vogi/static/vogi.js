@@ -1,8 +1,14 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
-const state = { text: "", level: "A2", edits: [], photo: null, fromPhoto: false };
+const state = { text: "", level: "A2", mode: "grammar", edits: [], photo: null, fromPhoto: false, origin: "write" };
 const MEMORY_KEY = "vogi.mistakes.v1";
 const TRY_KEY = "vogi.tryfirst";
+const LEVEL_KEY = "vogi.level";
+const EST_KEY = "vogi.level.estimates";
+const DISMISS_KEY = "vogi.level.dismissed";
+const LEVELS = ["A0", "A1", "A2", "B1", "B2", "C1", "C2"];
+const LEVEL_WORDS = { A0: "Just starting", A1: "Just starting", A2: "Everyday basics", B1: "Most things", B2: "Advanced", C1: "Advanced", C2: "Near native" };
+const MODE_WORDS = { grammar: "Grammar only", words: "Better words", natural: "Sound natural" };
 
 function el(tag, attrs = {}, ...kids) {
   const n = document.createElement(tag);
@@ -14,6 +20,8 @@ function el(tag, attrs = {}, ...kids) {
 }
 
 function status(msg) { $("status").textContent = msg || ""; }
+function store(key, value) { try { localStorage.setItem(key, value); } catch { /* private window */ } }
+function stored(key) { try { return localStorage.getItem(key); } catch { return null; } }
 
 async function api(path, body, isForm = false) {
   const res = await fetch(path, isForm
@@ -25,6 +33,47 @@ async function api(path, body, isForm = false) {
 }
 
 function picked(name) { return document.querySelector(`input[name=${name}]:checked`).value; }
+function provider() { return $("provider").value || null; }
+
+// Screens: one visible at a time. A stack so "Back" returns where the learner came from.
+const nav = [];
+let view = "home";
+function show(name, push = true) {
+  if (push && name !== view) nav.push(view);
+  view = name;
+  document.querySelectorAll(".view").forEach((v) => v.classList.toggle("hidden", v.id !== "v-" + name));
+  window.scrollTo({ top: 0 });
+  if (name === "home") { nav.length = 0; renderProgressLine(); }
+}
+function back() { show(nav.pop() || "home", false); }
+
+// Level: asked once in plain words, kept in this browser, shown as a chip.
+function setLevel(lv) {
+  if (!LEVELS.includes(lv)) return;
+  state.level = lv; store(LEVEL_KEY, lv);
+  $("level-chip").replaceChildren("Level: ", el("b", {}, `${LEVEL_WORDS[lv]} (${lv})`), el("u", {}, "change"));
+  $("level-chip").classList.remove("hidden");
+}
+function askLevel() { show("level"); }
+function estimates() { try { return JSON.parse(stored(EST_KEY) || "[]").filter((x) => LEVELS.includes(x)); } catch { return []; } }
+function noteEstimate(lv) {
+  $("suggest").classList.add("hidden");
+  if (!LEVELS.includes(lv)) return;
+  const list = estimates().concat(lv).slice(-5);
+  store(EST_KEY, JSON.stringify(list));
+  const last = list.slice(-3);
+  if (last.length < 3) return;
+  const me = LEVELS.indexOf(state.level), idx = last.map((x) => LEVELS.indexOf(x));
+  const above = idx.every((i) => i > me), below = idx.every((i) => i < me);
+  if (!above && !below) return;
+  // The gentlest step: the estimate nearest to the learner's level.
+  const target = last.sort((a, b) => Math.abs(LEVELS.indexOf(a) - me) - Math.abs(LEVELS.indexOf(b) - me))[0];
+  if (stored(DISMISS_KEY) === target) return;
+  $("suggest-text").textContent = `Your last texts look like ${target}. Switch?`;
+  $("suggest").classList.remove("hidden");
+  $("suggest-yes").onclick = () => { setLevel(target); store(EST_KEY, "[]"); $("suggest").classList.add("hidden"); };
+  $("suggest-no").onclick = () => { store(DISMISS_KEY, target); $("suggest").classList.add("hidden"); };
+}
 
 // Word-level diff: longest common subsequence over words. Runs of the same kind are grouped.
 function diff(a, b) {
@@ -84,20 +133,21 @@ function renderResult(data) {
   const m = data.meta;
   $("meta").textContent = `${m.model}${m.open_weight ? " (open weights)" : ""} · ${(m.ms / 1000).toFixed(1)} s · ` +
     `${m.tokens_in + m.tokens_out} tokens` + (m.usd_estimate != null ? ` · about $${m.usd_estimate.toFixed(4)}` : "") +
-    ` · format: ${m.format}`;
+    ` · format: ${m.format}` + (r.level_estimate ? ` · text looks like ${r.level_estimate}` : "");
   $("practise").classList.toggle("hidden", !r.edits.some((e) => e.severity === "error"));
-  $("result").classList.remove("hidden");
-  $("practice").classList.add("hidden");
+  const more = $("more-line");
+  more.classList.toggle("hidden", state.mode !== "grammar" || state.origin === "talk");
   const tryable = r.edits.map((e, k) => ({ e, n: k + 1 })).filter(({ e }, i) => e.severity === "error" && c.edits[i].grounded);
   const trying = $("tryfirst").checked && tryable.length > 0;
   $("try").classList.toggle("hidden", !trying);
   $("full").classList.toggle("hidden", trying);
   $("show-full").classList.remove("hidden");
-  $("result-title").textContent = trying ? "Your mistakes: fix them yourself" : "Your text, corrected";
+  $("result-title").textContent = trying ? "Fix your mistakes" : "Your text, corrected";
   if (trying) renderTry(tryable);
+  noteEstimate(r.level_estimate);
 }
 
-// Try first: Vogi marks where each mistake is and gives a hint. The learner fixes it.
+// Try first: Vogi marks where each mistake is and gives a hint. The learner fixes one at a time.
 function renderTry(items) {
   const text = state.text, marked = $("marked"); marked.replaceChildren();
   let cursor = 0;
@@ -112,27 +162,40 @@ function renderTry(items) {
   }
   marked.append(text.slice(cursor));
   let done = 0, self = 0;
+  const rows = [];
   const progress = () => {
     $("try-progress").textContent = done < items.length
-      ? `Vogi found ${items.length} mistake${items.length > 1 ? "s" : ""}. Fix each one yourself. Fixed by you: ${self} of ${items.length}.`
-      : `You fixed ${self} of ${items.length} mistakes yourself.`;
+      ? `${items.length} mistake${items.length > 1 ? "s" : ""}. Fix them one by one. Fixed by you: ${self} of ${items.length}.`
+      : `You fixed ${self} of ${items.length} mistake${items.length > 1 ? "s" : ""} yourself.`;
     if (done === items.length) { $("full").classList.remove("hidden"); $("show-full").classList.add("hidden"); }
   };
+  const open = (k) => {
+    rows.forEach((row, i) => row.li.classList.toggle("hidden", i > k));
+    Object.values(markEl).forEach((m) => m.classList.remove("now"));
+    if (!rows[k]) return;
+    if (markEl[rows[k].n]) markEl[rows[k].n].classList.add("now");
+    rows[k].inp.focus({ preventScroll: true });
+  };
   const list = $("try-list"); list.replaceChildren();
-  for (const { e, n } of items) {
+  items.forEach(({ e, n }, k) => {
     const spoils = e.replacement && e.hint.toLowerCase().includes(e.replacement.toLowerCase()) && !e.original.toLowerCase().includes(e.replacement.toLowerCase());
     const hint = spoils ? `Look at the ${CAT[e.category] || e.category}.` : e.hint;
     const inp = el("input", { type: "text", value: e.original, autocomplete: "off", spellcheck: "false", "aria-label": `Your fix for mistake ${n}` });
-    const check = el("button", { class: "btn" }, "Check"), show = el("button", { class: "btn" }, "Show answer");
+    const check = el("button", { class: "btn primary" }, "Check"), show = el("button", { class: "link" }, "Show answer");
     const fb = el("div", { class: "fb" });
+    const li = el("li", { value: n },
+      el("span", { class: "chip" }, CAT[e.category] || e.category),
+      el("span", { class: "hint" }, hint),
+      inp, el("div", { class: "acts" }, check, show), fb);
     let tries = 0, closed = false;
     const close = (byLearner, msg) => {
       closed = true; done++; if (byLearner) self++;
       inp.disabled = true; check.disabled = true; show.disabled = true;
       fb.className = "fb " + (byLearner ? "ok" : "no");
       fb.replaceChildren((byLearner ? "✓ " : "") + msg, el("span", { class: "rule" }, e.rule));
+      li.classList.add("closed");
       if (markEl[n]) markEl[n].classList.add("done");
-      progress();
+      progress(); open(k + 1);
     };
     check.onclick = async () => {
       const answer = inp.value.trim();
@@ -140,7 +203,7 @@ function renderTry(items) {
       if (_norm(answer) === _norm(e.replacement)) return close(true, "Right!");
       check.disabled = true; fb.className = "fb"; fb.textContent = "…";
       try {
-        const v = await api("/api/check", { provider: $("provider").value || null, answer, exercise: {
+        const v = await api("/api/check", { provider: provider(), answer, exercise: {
           type: "fix_sentence", instruction: `Fix the words '${e.original}' in this text.`, prompt: state.text,
           options: [], answer: e.replacement, category: e.category, hint: e.hint } });
         if (v.correct) return close(true, "Right! " + v.feedback);
@@ -150,41 +213,43 @@ function renderTry(items) {
       } catch (err) { fb.textContent = err.message; }
       if (!closed) check.disabled = false;
     };
-    inp.onkeydown = (ev) => { if (ev.key === "Enter") check.click(); };
+    inp.onkeydown = (ev) => { if (ev.key === "Enter") { ev.preventDefault(); check.click(); } };
     show.onclick = () => { if (!closed) close(false, `The answer: ${e.original} → ${e.replacement}`); };
-    list.append(el("li", { value: n },
-      el("span", { class: "chip" }, CAT[e.category] || e.category),
-      el("span", { class: "hint" }, hint),
-      el("div", {}, inp, check, " ", show), fb));
-  }
-  progress();
+    rows.push({ li, inp, n });
+    list.append(li);
+  });
+  progress(); open(0);
 }
 
 function _norm(s) { return s.replace(/[\s.!?,;:]+/g, " ").trim(); }
 
 async function runCorrect(text, fromPhoto = false, spoken = false) {
-  state.text = text.trim(); state.level = picked("level"); state.fromPhoto = fromPhoto && !!state.photo;
+  state.text = text.trim(); state.fromPhoto = fromPhoto && !!state.photo;
+  state.mode = spoken ? "grammar" : picked("mode");
+  state.origin = spoken ? "talk" : "write";
   if (!state.text) { status("Write a sentence first."); return; }
   $("go").disabled = true; status("Vogi is reading your text …");
   try {
-    const data = await api("/api/correct", { text: state.text, level: state.level, mode: spoken ? "grammar" : picked("mode"), spoken, provider: $("provider").value || null });
+    const data = await api("/api/correct", { text: state.text, level: state.level, mode: state.mode, spoken, provider: provider() });
     renderResult(data);
     remember(data.result.edits.filter((e, k) => e.severity === "error" && data.checks.edits[k].grounded));
-    status(""); $("result").scrollIntoView({ behavior: "smooth", block: "start" });
+    status("");
+    $("redpen").classList.add("hidden");
+    $("talk-note").classList.toggle("hidden", !spoken);
+    show("result");
     if (state.fromPhoto) redPen(data.result.edits);
   } catch (e) { status(e.message); } finally { $("go").disabled = false; }
 }
 
 async function runPractice(errs = state.edits.filter((e) => e.severity === "error")) {
   if (!errs.length) return;
-  $("practise").disabled = true; status("Vogi is writing exercises from your mistakes …");
+  $("practise").disabled = true; $("practise-top").disabled = true; status("Vogi is writing exercises from your mistakes …");
   try {
-    const data = await api("/api/exercises", { level: state.level, edits: errs, provider: $("provider").value || null });
+    const data = await api("/api/exercises", { level: state.level, edits: errs, provider: provider() });
     const list = $("ex"); list.replaceChildren();
     for (const ex of data.result.exercises) list.append(exerciseItem(ex));
-    $("practice").classList.remove("hidden"); status("");
-    $("practice").scrollIntoView({ behavior: "smooth", block: "start" });
-  } catch (e) { status(e.message); } finally { $("practise").disabled = false; }
+    status(""); show("practice");
+  } catch (e) { status(e.message); } finally { $("practise").disabled = false; $("practise-top").disabled = false; }
 }
 
 function exerciseItem(ex) {
@@ -200,20 +265,21 @@ function exerciseItem(ex) {
     const inp = el("input", { type: "text", autocomplete: "off", spellcheck: "false",
       placeholder: ex.type === "fix_sentence" ? "Write the correct sentence" : "Missing word(s)" });
     li.append(inp); get = () => inp.value;
+    inp.onkeydown = (ev) => { if (ev.key === "Enter") { ev.preventDefault(); btn.click(); } };
   }
   const fb = el("div", { class: "fb" });
-  const btn = el("button", { class: "btn" }, "Check");
-  const hint = el("button", { class: "btn" }, "Hint");
+  const btn = el("button", { class: "btn primary" }, "Check");
+  const hint = el("button", { class: "link" }, "Hint");
   btn.onclick = async () => {
     const answer = get().trim(); if (!answer) return;
     btn.disabled = true; fb.textContent = "…";
     try {
-      const v = await api("/api/check", { exercise: ex, answer, provider: $("provider").value || null });
+      const v = await api("/api/check", { exercise: ex, answer, provider: provider() });
       fb.className = "fb " + (v.correct ? "ok" : "no"); fb.textContent = (v.correct ? "✓ " : "✗ ") + v.feedback;
     } catch (e) { fb.textContent = e.message; } finally { btn.disabled = false; }
   };
   hint.onclick = () => { fb.className = "fb"; fb.textContent = "Hint: " + ex.hint; };
-  li.append(el("div", {}, btn, " ", hint), fb);
+  li.append(el("div", { class: "acts" }, btn, hint), fb);
   return li;
 }
 
@@ -226,26 +292,31 @@ async function redPen(edits) {
   const form = new FormData();
   form.append("image", state.photo);
   form.append("originals", JSON.stringify(edits.map((e) => e.original)));
-  if ($("provider").value) form.append("provider", $("provider").value);
+  form.append("text", state.text);
+  if (provider()) form.append("provider", provider());
   try {
     const data = await api("/api/locate", form, true);
     const found = drawMarks($("redpen-marks"), data.result.marks);
     savePage(edits, data.result.marks);
-    $("redpen-note").textContent = `Red pen: ${found} of ${edits.length} changes marked on your page. The numbers match the list below.`;
+    $("redpen-note").textContent = `${found} of ${edits.length} mistakes marked on your page. The numbers match the list below.`;
     $("redpen").classList.remove("hidden");
   } catch (e) { $("redpen-note").textContent = "Red pen failed: " + e.message; $("redpen").classList.remove("hidden"); }
 }
 
+// Boxes come on a 0-1000 grid and can be a little off, so each mark is a padded highlighter band, not a box.
 function drawMarks(layer, marks) {
   layer.replaceChildren();
   let found = 0;
+  const PX = 10, PY = 4; // padding on the 0-1000 grid; small in height so a band stays on its line
   for (const m of marks) {
     if (!m.found) continue;
     found++;
     const [x0, y0, x1, y1] = m.box;
-    const box = el("div", { class: "mark" }, el("span", {}, m.edit));
-    Object.assign(box.style, { left: x0 / 10 + "%", top: y0 / 10 + "%", width: (x1 - x0) / 10 + "%", height: (y1 - y0) / 10 + "%" });
-    layer.append(box);
+    const l = Math.max(0, x0 - PX), t = Math.max(0, y0 - PY), r = Math.min(1000, x1 + PX), b = Math.min(1000, y1 + PY);
+    const band = el("div", { class: "mark" }), badge = el("span", { class: "badge" }, m.edit);
+    Object.assign(band.style, { left: l / 10 + "%", top: t / 10 + "%", width: (r - l) / 10 + "%", height: (b - t) / 10 + "%" });
+    Object.assign(badge.style, { left: l / 10 + "%", top: (t + b) / 20 + "%" });
+    layer.append(band, badge);
   }
   return found;
 }
@@ -277,11 +348,12 @@ async function savePage(edits, marks) {
     renderPages();
   } catch { /* private window or storage blocked: the page still works */ }
 }
-let pageUrls = [], openPage = null;
+let pageUrls = [], openPage = null, pageCount = 0;
 async function renderPages() {
   let pages = [];
   try { pages = (await pagesTx("readonly", (st) => st.getAll())) || []; } catch { /* no IndexedDB */ }
-  $("pages").classList.toggle("hidden", !pages.length);
+  pageCount = pages.length;
+  $("pages-note").classList.toggle("hidden", pages.length > 0);
   pageUrls.forEach((u) => URL.revokeObjectURL(u)); pageUrls = [];
   pages.sort((a, b) => b.t.localeCompare(a.t));
   $("thumbs").replaceChildren(...pages.map((pg) => {
@@ -293,6 +365,7 @@ async function renderPages() {
     return b;
   }));
   if (openPage && !pages.some((p) => p.id === openPage)) closePage();
+  renderProgressLine();
 }
 function showPage(pg, url) {
   openPage = pg.id;
@@ -318,7 +391,7 @@ function saveMemory(list) {
 function remember(errs) {
   if (!errs.length) return;
   const t = new Date().toISOString();
-  saveMemory(loadMemory().concat(errs.map((e) => ({ t, level: state.level, category: e.category, original: e.original, replacement: e.replacement, rule: e.rule }))));
+  saveMemory(loadMemory().concat(errs.map((e) => ({ t, level: state.level, category: e.category, original: e.original, replacement: e.replacement, hint: e.hint, rule: e.rule }))));
   renderMemory();
 }
 function topCategories(list) {
@@ -330,6 +403,7 @@ function renderMemory() {
   const list = loadMemory(), body = $("memory-body");
   $("practise-top").classList.toggle("hidden", !list.length);
   $("forget").classList.toggle("hidden", !list.length);
+  renderProgressLine();
   if (!list.length) { body.replaceChildren(el("p", { class: "note" }, "No mistakes saved yet. Check a text first.")); return; }
   const cats = topCategories(list), max = cats[0][1].length;
   const ul = el("ul", { class: "bars" });
@@ -342,10 +416,17 @@ function renderMemory() {
   const days = new Set(list.map((m) => m.t.slice(0, 10))).size;
   body.replaceChildren(el("p", { class: "note" }, `${list.length} mistakes from ${days} day${days > 1 ? "s" : ""}. Your most frequent:`), ul);
 }
+function renderProgressLine() {
+  const n = loadMemory().length;
+  const parts = [];
+  if (n) parts.push(`${n} mistake${n === 1 ? "" : "s"} saved`);
+  if (pageCount) parts.push(`${pageCount} page${pageCount === 1 ? "" : "s"}`);
+  $("progress-line").textContent = parts.length ? parts.join(" · ") : "Your mistakes and your pages";
+}
 function practiseTop() {
   const cats = topCategories(loadMemory()).slice(0, 3);
-  state.level = picked("level");
-  runPractice(cats.flatMap(([, items]) => items.slice(-2)).map((m) => ({ ...m, severity: "error" })).map(({ t, level, ...e }) => e));
+  runPractice(cats.flatMap(([, items]) => items.slice(-2))
+    .map(({ t, level, ...m }) => ({ ...m, severity: "error", hint: m.hint || `Look at the ${CAT[m.category] || m.category}.` })));
 }
 
 // Talk: a role-play with a mission. The partner never corrects; the feedback comes after.
@@ -366,8 +447,7 @@ async function loadScenes() {
 function bubble(role, text) {
   const b = el("div", { class: "bubble " + role }, el("span", { class: "who" }, role === "partner" ? talk.scene.title : "You"), text);
   if (role === "partner") {
-    const again = el("button", { class: "btn", title: "Say it again", "aria-label": "Say it again" }, "🔊");
-    again.style.marginLeft = "6px"; again.style.padding = "0 6px";
+    const again = el("button", { class: "again", title: "Say it again", "aria-label": "Say it again" }, "🔊");
     again.onclick = () => speak(text, true);
     b.append(again);
   }
@@ -381,15 +461,15 @@ function speak(text, force = false) {
   u.lang = "de-DE";
   const v = speechSynthesis.getVoices().find((x) => x.lang && x.lang.toLowerCase().startsWith("de"));
   if (v) u.voice = v;
-  u.rate = ["A0", "A1", "A2"].includes(picked("level")) ? 0.85 : 1;
+  u.rate = ["A0", "A1", "A2"].includes(state.level) ? 0.85 : 1;
   speechSynthesis.speak(u);
 }
 
 function startScene(sc) {
-  Object.assign(talk, { scene: sc, history: [], busy: false });
+  Object.assign(talk, { scene: sc, history: [], busy: false, goalsDone: 0 });
   $("scene-title").textContent = sc.title;
   $("goals").replaceChildren(...sc.goals.map((g) => el("li", {}, g)));
-  $("chat").replaceChildren(); $("talk-result").classList.add("hidden");
+  $("chat").replaceChildren();
   $("scene-pick").classList.add("hidden"); $("talk").classList.remove("hidden");
   partnerTurn();
 }
@@ -399,7 +479,7 @@ function setBusy(b) { talk.busy = b; ["mic", "send", "say"].forEach((id) => ($(i
 async function partnerTurn() {
   setBusy(true); status(talk.history.length ? "The partner is answering …" : "The partner is starting …");
   try {
-    const data = await api("/api/talk", { scene: talk.scene.id, level: picked("level"), history: talk.history, provider: $("provider").value || null });
+    const data = await api("/api/talk", { scene: talk.scene.id, level: state.level, history: talk.history, provider: provider() });
     const r = data.result;
     talk.history.push({ role: "partner", text: r.reply });
     bubble("partner", r.reply); speak(r.reply);
@@ -424,10 +504,9 @@ function endTalk() {
   setBusy(true);
   const said = talk.history.filter((t) => t.role === "learner").map((t) => t.text);
   if (!said.length) { status("Say something first."); setBusy(false); return; }
-  $("talk-result").textContent = `Mission: ${talk.goalsDone || 0} of ${talk.scene.goals.length} goals reached. Your feedback on what you said is below.`;
-  $("talk-result").classList.remove("hidden");
+  $("talk-note").textContent = `Mission: ${talk.goalsDone || 0} of ${talk.scene.goals.length} goals reached. Here is the feedback on what you said.`;
   status("Vogi is checking what you said …");
-  runCorrect(said.join("\n"), false, true);
+  runCorrect(said.join("\n"), false, true).then(() => setBusy(false));
 }
 
 // Microphone: record, downsample to 16 kHz mono 16-bit WAV (what Muse Voice Transcribe takes), send.
@@ -471,7 +550,7 @@ async function toggleMic() {
     mic.classList.add("on"); mic.textContent = "■ Stop and send"; status("Listening … speak now.");
     return;
   }
-  mic.classList.remove("on"); mic.textContent = "🎤 Start speaking";
+  mic.classList.remove("on"); mic.textContent = "🎤 Speak";
   const wav = await stopRec();
   if (!wav) { status("That was too short. Try again."); return; }
   await sendSpeech(wav);
@@ -488,22 +567,32 @@ async function sendSpeech(wav) {
   } catch (e) { setBusy(false); status(e.message); }
 }
 
+// Photo: Muse Spark reads the handwriting into the same text box. The learner confirms before any correction.
 async function readPhoto(file) {
   if (!file) return;
   state.photo = file;
   $("photo-preview").src = URL.createObjectURL(file);
-  $("photo-label").textContent = file.name;
+  $("photo-box").classList.remove("hidden");
+  $("unclear").classList.add("hidden");
+  $("photo-note").textContent = "Vogi is reading your handwriting …";
+  $("go").disabled = true;
   status("Vogi is reading your handwriting …");
   const form = new FormData(); form.append("image", file);
-  if ($("provider").value) form.append("provider", $("provider").value);
+  if (provider()) form.append("provider", provider());
   try {
     const data = await api("/api/read", form, true);
-    $("read-text").value = data.result.text;
+    $("text").value = data.result.text;
     const u = data.result.unclear_words;
     $("unclear").textContent = u.length ? "Hard to read: " + u.join(", ") : "";
     $("unclear").classList.toggle("hidden", !u.length);
-    $("reading").classList.remove("hidden"); status("");
-  } catch (e) { status(e.message); }
+    $("photo-note").textContent = "Vogi read this from your photo. Fix any word it misread, then press Check.";
+    status("");
+  } catch (e) { status(e.message); $("photo-note").textContent = "Vogi could not read the photo."; }
+  $("go").disabled = false;
+}
+function removePhoto() {
+  state.photo = null; $("photo").value = "";
+  $("photo-box").classList.add("hidden");
 }
 
 async function loadProviders() {
@@ -528,26 +617,35 @@ async function loadBoard() {
   } catch { /* the scoreboard is optional */ }
 }
 
-document.querySelectorAll(".tab").forEach((b) => b.onclick = () => {
-  document.querySelectorAll(".tab").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", x === b); });
-  $("pane-type").classList.toggle("hidden", b.dataset.tab !== "type");
-  $("pane-photo").classList.toggle("hidden", b.dataset.tab !== "photo");
-  $("pane-talk").classList.toggle("hidden", b.dataset.tab !== "talk");
-  $("mode-set").classList.toggle("hidden", b.dataset.tab === "talk");
-  $("go").classList.toggle("hidden", b.dataset.tab === "talk");
+function optionsLine() {
+  $("options-line").textContent = MODE_WORDS[picked("mode")] + ($("tryfirst").checked ? " · I fix my mistakes first" : " · show me the answer");
+}
+
+// Wiring
+$("brand").onclick = () => show("home");
+$("level-chip").onclick = askLevel;
+document.querySelectorAll("[data-level]").forEach((b) => b.onclick = () => { setLevel(b.dataset.level); back(); });
+document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => show(b.dataset.go));
+document.querySelectorAll("[data-back]").forEach((b) => b.onclick = back);
+document.querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => {
+  document.querySelector(`input[name=mode][value=${b.dataset.mode}]`).checked = true; optionsLine();
+  runCorrect(state.text, state.fromPhoto);
 });
-$("go").onclick = () => {
-  const photo = document.querySelector(".tab.on").dataset.tab === "photo";
-  runCorrect(photo ? $("read-text").value : $("text").value, photo);
-};
-$("confirm").onclick = () => runCorrect($("read-text").value, true);
+$("go").onclick = () => runCorrect($("text").value, !!state.photo);
+$("text").onkeydown = (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) $("go").click(); };
+$("cam").onclick = () => $("photo").click();
 $("photo").onchange = (e) => readPhoto(e.target.files[0]);
+$("photo-remove").onclick = removePhoto;
+$("again").onclick = () => { nav.length = 0; nav.push("home"); show("write", false); };
 $("practise").onclick = () => runPractice();
 $("practise-top").onclick = practiseTop;
+$("practice-done").onclick = back;
 $("forget").onclick = () => { if (confirm("Forget all saved mistakes?")) { saveMemory([]); renderMemory(); } };
 $("show-full").onclick = () => { $("full").classList.remove("hidden"); $("show-full").classList.add("hidden"); };
+$("how-link").onclick = () => { $("about").open = true; $("checks").scrollIntoView({ behavior: "smooth", block: "center" }); };
 try { $("tryfirst").checked = localStorage.getItem(TRY_KEY) !== "0"; } catch { /* storage blocked */ }
-$("tryfirst").onchange = () => { try { localStorage.setItem(TRY_KEY, $("tryfirst").checked ? "1" : "0"); } catch { /* ignore */ } };
+$("tryfirst").onchange = () => { store(TRY_KEY, $("tryfirst").checked ? "1" : "0"); optionsLine(); };
+document.querySelectorAll("input[name=mode]").forEach((r) => r.onchange = optionsLine);
 $("mic").onclick = toggleMic;
 $("send").onclick = () => { learnerSay($("say").value); $("say").value = ""; };
 $("say").onkeydown = (e) => { if (e.key === "Enter") $("send").click(); };
@@ -560,4 +658,7 @@ $("pv-delete").onclick = async () => {
   try { await pagesTx("readwrite", (st) => st.delete(id)); } catch { /* ignore */ }
   closePage(); renderPages();
 };
+optionsLine();
+const savedLevel = stored(LEVEL_KEY);
+if (LEVELS.includes(savedLevel)) { setLevel(savedLevel); show("home", false); } else { show("level", false); }
 loadProviders(); loadBoard(); renderMemory(); loadScenes(); renderPages();

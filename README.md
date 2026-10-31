@@ -13,6 +13,16 @@ and trains them on the ones they make most.
 
 Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your World").
 
+## How a learner uses it
+
+1. Once: "How much German do you know?" Four plain answers instead of CEFR codes. Vogi also
+   estimates the level of every text and suggests a change when three texts in a row differ.
+2. Home has three choices: **Check my writing**, **Practise speaking**, **My progress**.
+3. Check my writing: one text box with a camera button. Vogi marks each mistake with a hint,
+   the learner fixes them one by one, then sees the rule and the full correction. On a photo,
+   the mistakes are highlighted on the page itself.
+4. Technical details (model, cost, self-check, score table) sit in "How Vogi works" at the bottom.
+
 ## Why
 
 I learn German in Leipzig. A chatbot rewrites my text and I learn nothing, or I spend my

@@ -3,153 +3,191 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vogi · German writing coach</title>
+<title>Vogi · German writing and speaking coach</title>
 <link rel="stylesheet" href="/static/vogi.css">
 </head>
 <body>
 <header class="top">
-  <div class="brand"><span class="bird" aria-hidden="true">🐦</span> Vogi</div>
-  <p class="tag">Write German. Pick what you want. Learn from your own mistakes.</p>
+  <button class="brand" id="brand" aria-label="Vogi home"><span class="bird" aria-hidden="true">🐦</span> Vogi</button>
+  <button class="level-chip hidden" id="level-chip" title="Change your level"></button>
 </header>
 
 <main>
-  <section class="card" id="write">
-    <div class="tabs" role="tablist">
-      <button role="tab" class="tab on" data-tab="type" aria-selected="true">Type</button>
-      <button role="tab" class="tab" data-tab="photo" aria-selected="false">Photo of handwriting</button>
-      <button role="tab" class="tab" data-tab="talk" aria-selected="false">Talk</button>
+  <!-- First use: the level, in plain words -->
+  <section class="view card hidden" id="v-level">
+    <h1>How much German do you know?</h1>
+    <p class="note">Vogi explains your mistakes at your level. You can change this any time.</p>
+    <div class="choices">
+      <button class="choice" data-level="A1"><strong>Just starting</strong><small>A few words and short phrases</small></button>
+      <button class="choice" data-level="A2"><strong>Everyday basics</strong><small>Shopping, the doctor, a short email</small></button>
+      <button class="choice" data-level="B1"><strong>I can talk about most things</strong><small>With mistakes, but people understand me</small></button>
+      <button class="choice" data-level="B2"><strong>Advanced</strong><small>Work, study, long texts</small></button>
     </div>
-
-    <div class="pane" id="pane-type">
-      <label for="text" class="lbl">Your German text</label>
-      <textarea id="text" rows="5" maxlength="1500" placeholder="Gestern ich habe mit mein Bruder Fußball gespielt."></textarea>
-    </div>
-
-    <div class="pane hidden" id="pane-photo">
-      <label class="drop" for="photo">
-        <input type="file" id="photo" accept="image/jpeg,image/png,image/webp" capture="environment">
-        <span id="photo-label">Choose or take a photo of your homework</span>
-      </label>
-      <div id="reading" class="hidden">
-        <img id="photo-preview" alt="Your photo">
-        <p class="lbl">Vogi read this. Fix any word it misread, then confirm. Vogi has not corrected anything yet.</p>
-        <p id="unclear" class="note hidden"></p>
-        <textarea id="read-text" rows="5" maxlength="1500"></textarea>
-        <button class="btn" id="confirm">This is what I wrote</button>
+    <details class="fine-levels">
+      <summary>I know my level (A0 to C2)</summary>
+      <div class="cefr" id="cefr">
+        <button class="btn" data-level="A0">A0</button><button class="btn" data-level="A1">A1</button>
+        <button class="btn" data-level="A2">A2</button><button class="btn" data-level="B1">B1</button>
+        <button class="btn" data-level="B2">B2</button><button class="btn" data-level="C1">C1</button>
+        <button class="btn" data-level="C2">C2</button>
       </div>
-    </div>
+    </details>
+  </section>
 
-    <div class="pane hidden" id="pane-talk">
-      <div id="scene-pick">
-        <p class="lbl">Pick a scene. You speak, an AI partner answers. Vogi gives feedback at the end.</p>
-        <div class="scenes" id="scenes"></div>
-      </div>
-      <div id="talk" class="hidden">
-        <div class="mission"><strong id="scene-title"></strong> · your mission:<ol id="goals"></ol></div>
-        <div class="chat" id="chat" aria-live="polite"></div>
-        <p class="summary hidden" id="talk-result"></p>
-        <div class="row">
-          <button class="btn primary" id="mic">🎤 Start speaking</button>
-          <input type="text" id="say" maxlength="300" placeholder="or type your answer" autocomplete="off">
-          <button class="btn" id="send">Send</button>
-        </div>
-        <div class="row">
-          <label class="try"><input type="checkbox" id="voice" checked> Partner speaks aloud (browser voice)</label>
-          <button class="btn" id="end-talk">End and get feedback</button>
-          <button class="btn" id="new-scene">Other scene</button>
-        </div>
-      </div>
+  <!-- Home: one question -->
+  <section class="view hidden" id="v-home">
+    <h1>What do you want to do?</h1>
+    <div class="choices big">
+      <button class="choice primary" data-go="write"><strong>Check my writing</strong><small>Type a text, or take a photo of your homework</small></button>
+      <button class="choice" data-go="talk"><strong>Practise speaking</strong><small>Talk with a partner: the bakery, the doctor, a neighbour</small></button>
+      <button class="choice" data-go="progress"><strong>My progress</strong><small id="progress-line">Your mistakes and your pages</small></button>
     </div>
+    <p class="fine">Vogi marks where your mistakes are. You fix them, then it shows the rule.</p>
+  </section>
 
-    <div class="row">
-      <fieldset class="seg" id="level">
-        <legend>Level</legend>
-        <label title="New to German"><input type="radio" name="level" value="A0">A0</label>
-        <label><input type="radio" name="level" value="A1">A1</label>
-        <label><input type="radio" name="level" value="A2" checked>A2</label>
-        <label><input type="radio" name="level" value="B1">B1</label>
-        <label><input type="radio" name="level" value="B2">B2</label>
-        <label><input type="radio" name="level" value="C1">C1</label>
-        <label><input type="radio" name="level" value="C2">C2</label>
-      </fieldset>
+  <!-- Check my writing: one input, typed or photographed -->
+  <section class="view card hidden" id="v-write">
+    <button class="back" data-back>← Back</button>
+    <h2>Check my writing</h2>
+    <div id="photo-box" class="hidden">
+      <img id="photo-preview" alt="Your photo">
+      <p class="note" id="photo-note">Vogi read this from your photo. Fix any word it misread, then press Check.</p>
+      <p id="unclear" class="note hidden"></p>
+      <button class="link" id="photo-remove">Remove photo</button>
+    </div>
+    <label for="text" class="lbl">Your German text</label>
+    <div class="textwrap">
+      <textarea id="text" rows="6" maxlength="1500" placeholder="Gestern ich habe mit mein Bruder Fußball gespielt."></textarea>
+      <input type="file" id="photo" accept="image/jpeg,image/png,image/webp" capture="environment" class="hidden">
+      <button class="cam" id="cam" title="Take or choose a photo of your handwriting" aria-label="Photo of your handwriting">📷</button>
+    </div>
+    <button class="btn primary big" id="go">Check</button>
+    <details class="options" id="options">
+      <summary><span id="options-line">Grammar only · I fix my mistakes first</span> · change</summary>
       <fieldset class="seg" id="mode-set">
-        <legend>What do you want?</legend>
+        <legend>What should Vogi look at?</legend>
         <label><input type="radio" name="mode" value="grammar" checked>Grammar only</label>
         <label><input type="radio" name="mode" value="words">Better words</label>
         <label><input type="radio" name="mode" value="natural">Sound natural</label>
       </fieldset>
-    </div>
-    <label class="try"><input type="checkbox" id="tryfirst" checked> Try first: I fix my mistakes myself before Vogi shows the answer</label>
-    <div class="row end">
-      <label class="model">Model
-        <select id="provider"></select>
-      </label>
-      <button class="btn primary" id="go">Check my text</button>
-    </div>
+      <label class="try"><input type="checkbox" id="tryfirst" checked> Try first: I fix my mistakes myself before Vogi shows the answer</label>
+    </details>
     <p class="fine">Answers come from an AI model and can be wrong. Do not enter personal data.</p>
   </section>
 
-  <p id="status" class="status" role="status" aria-live="polite"></p>
-
-  <section class="card hidden" id="result">
+  <!-- Result: try first, then the full correction -->
+  <section class="view card hidden" id="v-result">
+    <button class="back" data-back>← Back</button>
     <h2 id="result-title">Your text, corrected</h2>
+    <p class="note hidden" id="talk-note"></p>
     <figure id="redpen" class="hidden">
       <div class="paper"><img id="redpen-img" alt="Your handwriting with Vogi's marks"><div id="redpen-marks" aria-hidden="true"></div></div>
       <figcaption class="note" id="redpen-note"></figcaption>
     </figure>
     <div id="try" class="hidden">
-      <p class="note" id="try-progress"></p>
       <p class="diff" id="marked"></p>
-      <ol class="edits" id="try-list"></ol>
-      <button class="btn" id="show-full">Show the full correction</button>
+      <p class="note" id="try-progress"></p>
+      <ol class="edits trylist" id="try-list"></ol>
+      <button class="link" id="show-full">Skip: show the full correction</button>
     </div>
     <div id="full">
       <p class="diff" id="diff"></p>
       <p class="summary" id="summary"></p>
       <ol class="edits" id="edits"></ol>
-      <div class="checks" id="checks"></div>
-      <p class="meta" id="meta"></p>
-      <button class="btn primary" id="practise">Practise my mistakes</button>
-    </div>
-  </section>
-
-  <section class="card" id="memory">
-    <h2>My mistakes</h2>
-    <p class="note">Vogi remembers the mistakes from your checks, in this browser only. Nothing is sent anywhere until you practise.</p>
-    <div id="memory-body"><p class="note">No mistakes saved yet. Check a text first.</p></div>
-    <div class="row">
-      <button class="btn primary hidden" id="practise-top">Practise my top 3</button>
-      <button class="btn hidden" id="forget">Forget all</button>
-    </div>
-  </section>
-
-  <section class="card hidden" id="pages">
-    <h2>My pages</h2>
-    <p class="note">Your checked homework photos with Vogi's red marks, kept in this browser only.</p>
-    <div class="thumbs" id="thumbs"></div>
-    <div id="page-view" class="hidden">
-      <div class="paper"><img id="pv-img" alt="A checked page with Vogi's marks"><div id="pv-marks" aria-hidden="true"></div></div>
-      <p class="note" id="pv-meta"></p>
-      <ol class="edits" id="pv-edits"></ol>
+      <p class="note" id="more-line">Checked: grammar only. Want more? <button class="link" data-mode="words">Better words</button> · <button class="link" data-mode="natural">Sound natural</button></p>
       <div class="row">
-        <button class="btn" id="pv-close">Close</button>
-        <button class="btn" id="pv-delete">Delete this page</button>
+        <button class="btn primary" id="practise">Practise my mistakes</button>
+        <button class="btn" id="again">Check another text</button>
+      </div>
+      <p class="fine">Vogi checked its own answer before you saw it. <button class="link" id="how-link">How</button></p>
+    </div>
+    <div class="suggest hidden" id="suggest">
+      <span id="suggest-text"></span>
+      <button class="btn primary" id="suggest-yes">Yes</button>
+      <button class="btn" id="suggest-no">Not now</button>
+    </div>
+  </section>
+
+  <!-- Practice: three exercises from the learner's mistakes -->
+  <section class="view card hidden" id="v-practice">
+    <button class="back" data-back>← Back</button>
+    <h2>Practice from your mistakes</h2>
+    <ol class="ex" id="ex"></ol>
+    <button class="btn" id="practice-done">Done</button>
+  </section>
+
+  <!-- Talk: a role-play with a mission -->
+  <section class="view card hidden" id="v-talk">
+    <button class="back" data-back>← Back</button>
+    <div id="scene-pick">
+      <h2>Practise speaking</h2>
+      <p class="note">Pick a scene. You speak, a partner answers. Vogi gives feedback at the end.</p>
+      <div class="scenes" id="scenes"></div>
+    </div>
+    <div id="talk" class="hidden">
+      <h2 id="scene-title"></h2>
+      <div class="mission">Your mission:<ol id="goals"></ol></div>
+      <div class="chat" id="chat" aria-live="polite"></div>
+      <button class="btn primary big" id="mic">🎤 Speak</button>
+      <div class="row say">
+        <input type="text" id="say" maxlength="300" placeholder="or type your answer" autocomplete="off">
+        <button class="btn" id="send">Send</button>
+      </div>
+      <div class="row quiet">
+        <button class="btn" id="end-talk">End and get feedback</button>
+        <button class="link" id="new-scene">Other scene</button>
+        <label class="try"><input type="checkbox" id="voice" checked> Partner speaks aloud</label>
       </div>
     </div>
   </section>
 
-  <section class="card hidden" id="practice">
-    <h2>Practice from your mistakes</h2>
-    <ol class="ex" id="ex"></ol>
+  <!-- My progress: mistakes and pages -->
+  <section class="view hidden" id="v-progress">
+    <button class="back" data-back>← Back</button>
+    <section class="card" id="memory">
+      <h2>My mistakes</h2>
+      <div id="memory-body"><p class="note">No mistakes saved yet. Check a text first.</p></div>
+      <div class="row">
+        <button class="btn primary hidden" id="practise-top">Practise my top 3</button>
+        <button class="link hidden" id="forget">Forget all</button>
+      </div>
+      <p class="fine">Kept in this browser only.</p>
+    </section>
+    <section class="card" id="pages">
+      <h2>My pages</h2>
+      <p class="note" id="pages-note">Your checked homework photos with Vogi's red marks appear here.</p>
+      <div class="thumbs" id="thumbs"></div>
+      <div id="page-view" class="hidden">
+        <div class="paper"><img id="pv-img" alt="A checked page with Vogi's marks"><div id="pv-marks" aria-hidden="true"></div></div>
+        <p class="note" id="pv-meta"></p>
+        <ol class="edits" id="pv-edits"></ol>
+        <div class="row">
+          <button class="btn" id="pv-close">Close</button>
+          <button class="link" id="pv-delete">Delete this page</button>
+        </div>
+      </div>
+    </section>
   </section>
 
-  <section class="card" id="score">
-    <h2>How good is Vogi?</h2>
+  <!-- Technical detail, out of the learner's way -->
+  <details class="card about" id="about">
+    <summary>How Vogi works</summary>
+    <label class="model">Model
+      <select id="provider"></select>
+    </label>
+    <h3>Vogi checks its own answer</h3>
+    <p class="note">Before you see a correction, code checks that every change points at words that are really in your text.</p>
+    <div class="checks" id="checks">No check yet.</div>
+    <p class="meta" id="meta"></p>
+    <h3>How good is Vogi?</h3>
     <p class="note">Each model corrects the same test sentences in grammar mode. Every sentence has known errors, or none.
       <a href="https://github.com/avtak/vogi/blob/main/eval/README.md">How the score works</a></p>
     <div id="board"><p class="note">No test runs yet. Run <code>uv run vogi-eval</code>.</p></div>
-  </section>
+    <p class="note">My mistakes and My pages stay in this browser. No account, no server keeps them.</p>
+  </details>
 </main>
+
+<p id="status" class="status" role="status" aria-live="polite"></p>
 
 <script src="/static/vogi.js"></script>
 </body>
