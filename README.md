@@ -3,8 +3,10 @@ title: Vogi
 emoji: 🐦
 colorFrom: green
 colorTo: blue
-sdk: docker
-app_port: 7860
+sdk: gradio
+sdk_version: 6.31.0
+python_version: "3.12"
+app_file: app.py
 pinned: false
 license: mit
 short_description: German writing and speaking coach on Meta's Muse models
