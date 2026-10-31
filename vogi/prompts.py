@@ -44,7 +44,7 @@ Rules:
   `replacement` is copied exactly from corrected_text.
 - corrected_text is the learner's whole text with all edits applied and nothing else changed.
 - `rule`: one sentence, at most 20 words, in English that fits the learner's level. Name the rule, not just the fix.
-  Example: "In a main clause the verb is always in position 2, so after 'Gestern' comes 'habe'."
+  Example: "In a side clause with 'weil', the conjugated verb goes to the end."
 - `summary`: one sentence, at most 25 words, kind and concrete.
 - German conventions: nouns start with a capital letter. Use ä, ö, ü, ß, never ae, oe, ue.
 """
