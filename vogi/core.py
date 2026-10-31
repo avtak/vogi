@@ -14,7 +14,7 @@ from pydantic import BaseModel, ValidationError
 
 from . import prompts
 from .providers import Provider, client
-from .schema import Correction, Exercises, Reading, Verdict, json_schema
+from .schema import Correction, Exercises, Marks, Reading, Verdict, json_schema
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -73,8 +73,12 @@ def correct(p: Provider, text: str, level: str, mode: str) -> dict:
     return {"result": result.model_dump(), "checks": verify(text, result, mode), "meta": meta}
 
 
+def _data_url(image: bytes, mime: str) -> str:
+    return f"data:{mime};base64,{base64.b64encode(image).decode()}"
+
+
 def read_image(p: Provider, image: bytes, mime: str) -> dict:
-    url = f"data:{mime};base64,{base64.b64encode(image).decode()}"
+    url = _data_url(image, mime)
     messages = [
         {"role": "system", "content": prompts.READ_SYSTEM},
         {"role": "user", "content": [
@@ -84,6 +88,17 @@ def read_image(p: Provider, image: bytes, mime: str) -> dict:
     ]
     result, meta = ask(p, messages, Reading)
     return {"result": result.model_dump(), "meta": meta}
+
+
+def locate(p: Provider, image: bytes, mime: str, originals: list[str]) -> dict:
+    """Red pen: Muse Spark's perception grounding finds each wrong word on the photo."""
+    result, meta = ask(p, prompts.mark_messages(_data_url(image, mime), originals), Marks)
+    marks = []
+    for m in result.marks:
+        box = [min(1000, max(0, v)) for v in m.box[:4]]
+        ok = m.found and len(box) == 4 and box[2] > box[0] and box[3] > box[1] and 1 <= m.edit <= len(originals)
+        marks.append({"edit": m.edit, "found": ok, "box": box if ok else None})
+    return {"result": {"marks": marks}, "meta": meta}
 
 
 def exercises(p: Provider, level: str, edits: list[dict]) -> dict:

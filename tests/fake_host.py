@@ -34,6 +34,10 @@ CANNED = {
          "options": [], "answer": "Am Montag gehe ich zum Kurs.", "category": "verb_position",
          "hint": "What comes after 'Am Montag'?"},
     ]},
+    "Marks": {"marks": [
+        {"edit": 1, "found": True, "box": [180, 120, 420, 230]},
+        {"edit": 2, "found": True, "box": [520, 120, 760, 230]},
+    ]},
     "Verdict": {"correct": True, "feedback": "Yes, the verb is now in position 2."},
 }
 

@@ -12,7 +12,7 @@ uv run python -c "import json; from vogi.schema import Correction, json_schema; 
 | Field | Values |
 |---|---|
 | `text` | The learner's German text, at most 1,500 characters |
-| `level` | `A1`, `A2`, `B1` |
+| `level` | `A0` (new to German), `A1`, `A2`, `B1`, `B2`, `C1`, `C2` |
 | `mode` | `grammar` (fix errors only), `words` (also better words), `natural` (also sound like a native speaker) |
 
 `POST /api/correct` with that JSON body.
@@ -36,7 +36,8 @@ uv run python -c "import json; from vogi.schema import Correction, json_schema; 
 
 - `severity`: `error` means the text was wrong; `style` means it was correct but sounds better changed.
 - `category`: one of `verb_position`, `verb_form`, `auxiliary`, `case`, `gender`, `adjective_ending`,
-  `preposition`, `plural`, `spelling`, `capitalisation`, `punctuation`, `word_choice`, `style`, `other`.
+  `preposition`, `plural`, `spelling`, `capitalisation`, `punctuation`, `word_choice`, `register`, `idiom`,
+  `style`, `other`.
 - `checks` comes from Vogi's own code, not from the model.
 
 A breaking change gets a new version name.

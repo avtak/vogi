@@ -35,6 +35,8 @@ PROVIDERS: dict[str, Provider] = {
         "baseten", "Muse Spark Open (Baseten)",
         "https://inference.baseten.co/v1", "BASETEN_API_KEY",
         "meta-models/muse-spark-open-1026", open_weight=True,
+        # Baseten docs: "All except Muse Spark Open support structured outputs and JSON mode."
+        native_schema=False,
     ),
     "fireworks": Provider(
         "fireworks", "Muse Spark Open (Fireworks)",

@@ -41,9 +41,13 @@
     <div class="row">
       <fieldset class="seg" id="level">
         <legend>Level</legend>
+        <label title="New to German"><input type="radio" name="level" value="A0">A0</label>
         <label><input type="radio" name="level" value="A1">A1</label>
         <label><input type="radio" name="level" value="A2" checked>A2</label>
         <label><input type="radio" name="level" value="B1">B1</label>
+        <label><input type="radio" name="level" value="B2">B2</label>
+        <label><input type="radio" name="level" value="C1">C1</label>
+        <label><input type="radio" name="level" value="C2">C2</label>
       </fieldset>
       <fieldset class="seg" id="mode">
         <legend>What do you want?</legend>
@@ -65,12 +69,26 @@
 
   <section class="card hidden" id="result">
     <h2>Your text, corrected</h2>
+    <figure id="redpen" class="hidden">
+      <div class="paper"><img id="redpen-img" alt="Your handwriting with Vogi's marks"><div id="redpen-marks" aria-hidden="true"></div></div>
+      <figcaption class="note" id="redpen-note"></figcaption>
+    </figure>
     <p class="diff" id="diff"></p>
     <p class="summary" id="summary"></p>
     <ol class="edits" id="edits"></ol>
     <div class="checks" id="checks"></div>
     <p class="meta" id="meta"></p>
     <button class="btn primary" id="practise">Practise my mistakes</button>
+  </section>
+
+  <section class="card" id="memory">
+    <h2>My mistakes</h2>
+    <p class="note">Vogi remembers the mistakes from your checks, in this browser only. Nothing is sent anywhere until you practise.</p>
+    <div id="memory-body"><p class="note">No mistakes saved yet. Check a text first.</p></div>
+    <div class="row">
+      <button class="btn primary hidden" id="practise-top">Practise my top 3</button>
+      <button class="btn hidden" id="forget">Forget all</button>
+    </div>
   </section>
 
   <section class="card hidden" id="practice">

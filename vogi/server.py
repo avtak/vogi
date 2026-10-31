@@ -91,6 +91,22 @@ async def read(image: UploadFile = File(...), provider: str | None = Form(None))
     return _run(core.read_image, _provider(provider), data, image.content_type)
 
 
+@app.post("/api/locate")
+async def locate(image: UploadFile = File(...), originals: str = Form(...), provider: str | None = Form(None)):
+    if image.content_type not in IMAGE_TYPES:
+        raise HTTPException(400, "Please send a JPEG, PNG, WebP or GIF photo.")
+    data = await image.read()
+    if len(data) > MAX_IMAGE:
+        raise HTTPException(400, "The photo is larger than 8 MB.")
+    try:
+        words = [str(w)[:80] for w in json.loads(originals)][:20]
+    except (ValueError, TypeError) as e:
+        raise HTTPException(400, "originals must be a JSON list of strings.") from e
+    if not words:
+        raise HTTPException(400, "Nothing to mark.")
+    return _run(core.locate, _provider(provider), data, image.content_type, words)
+
+
 @app.post("/api/exercises")
 def make_exercises(body: ExercisesIn):
     edits = [e.model_dump() for e in body.edits]

@@ -10,7 +10,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Level = Literal["A1", "A2", "B1"]
+Level = Literal["A0", "A1", "A2", "B1", "B2", "C1", "C2"]
 Mode = Literal["grammar", "words", "natural"]
 
 Category = Literal[
@@ -26,6 +26,8 @@ Category = Literal[
     "capitalisation",
     "punctuation",
     "word_choice",
+    "register",        # formal or informal, Sie or du, written or spoken
+    "idiom",
     "style",
     "other",
 ]
@@ -68,6 +70,16 @@ class Exercise(Strict):
 
 class Exercises(Strict):
     exercises: list[Exercise]
+
+
+class Mark(Strict):
+    edit: int = Field(description="The number of the edit, starting at 1.")
+    found: bool = Field(description="false if the words cannot be found in the photo.")
+    box: list[int] = Field(description="[x_min, y_min, x_max, y_max] on a 0-1000 grid of the image. [0,0,0,0] if not found.")
+
+
+class Marks(Strict):
+    marks: list[Mark]
 
 
 class Verdict(Strict):

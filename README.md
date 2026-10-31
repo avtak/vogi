@@ -2,19 +2,24 @@
 
 Vogi corrects German writing for adult learners, and the learner never writes a prompt.
 They type a text or photograph their handwritten homework. Then they pick their level
-(A1, A2, B1) and what they want: **grammar only**, **better words** or **sound natural**.
+(A0 for complete beginners, then A1 to C2) and what they want: **grammar only**, **better words**
+or **sound natural**.
 Vogi answers in one fixed format. It shows the corrected text with every change marked.
-Each change has a category and the rule behind it, at the learner's level. Then it builds exercises
-from the learner's own mistakes and checks the answers.
+Each change has a category and the rule behind it, at the learner's level. On a photo, Vogi marks each
+mistake with a red pen, right on the handwriting. It remembers the learner's mistakes over time
+and trains them on the ones they make most.
 
 Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your World").
 
 ## Why
 
 I learn German in Leipzig. A chatbot rewrites my text and I learn nothing, or I spend my
-time on prompts like "only fix grammar, explain at A2, do not change my words". Teachers
-have no time to correct every text. Vogi turns the prompt into three buttons and the
-answer into a format you can learn from, and it checks its own answer.
+time on prompts like "only fix grammar, explain at A2, do not change my words". And it
+forgets my mistakes the next day. Teachers have no time to correct every text.
+
+Vogi works like a teacher's red pen, not a ghostwriter. It marks the mistakes and names the
+rule, and the learner fixes them. It keeps a list of the learner's mistakes and builds
+practice from the ones that keep coming back. The learner never writes a prompt.
 
 ## What was built during the hackathon (27.10.2026 to 04.11.2026)
 
@@ -28,6 +33,8 @@ history). No code, data or prompts come from my earlier app, Sprachvogel.
 | Model calls | `vogi/core.py` | Structured output with `response_format` json_schema; a fallback that puts the schema in the prompt for hosts that refuse it; one retry if the answer breaks the format |
 | Self-check | `vogi/core.py` `verify()` | Before the learner sees an answer, Vogi checks that each change points at words really in the text, and flags changes that have no explanation |
 | Handwriting | `/api/read` | Muse Spark copies the handwritten text with its mistakes. The learner confirms the text before any correction |
+| Red pen | `/api/locate` | Muse Spark's perception grounding returns a box (0-1000 grid) around each wrong word on the photo; the page draws the numbered marks |
+| My mistakes | `vogi/static/vogi.js` | Each check saves its error categories in the learner's browser; "Practise my top 3" builds exercises from the most frequent ones |
 | Practice | `/api/exercises`, `/api/check` | Three exercises from the learner's own mistakes; an exact-match check first, the model as judge only for rewritten sentences |
 | Test set and score | `eval/` | 38 sentences with known errors (or none) and a scorer that runs the same set on any model |
 | Web app | `vogi/static/` | One page, no build step, light and dark |
@@ -36,8 +43,8 @@ history). No code, data or prompts come from my earlier app, Sprachvogel.
 
 | Model | Where | Used for |
 |---|---|---|
-| `muse-spark-1.3` | Meta Model API (`https://api.meta.ai/v1`) | Correction, reading handwriting, exercises, judging answers |
-| Muse Spark Open | Partner inference: Baseten (`meta-models/muse-spark-open-1026`), Fireworks, Together, or any OpenAI-compatible host | The same correction behind the same format, scored on the same test set |
+| `muse-spark-1.3` | Meta Model API (`https://api.meta.ai/v1`) | Correction, reading handwriting, finding each wrong word on the photo, exercises, judging answers |
+| Muse Spark Open | Partner inference: Baseten (`meta-models/muse-spark-open-1026`), Fireworks, Together, or any OpenAI-compatible host | The same correction behind the same format, scored on the same test set. Baseten does not offer structured output for this model, so Vogi puts the schema in the prompt and validates the answer |
 
 Vogi uses Standard mode only. The Model API docs say content in Standard mode is not used
 to train Meta models. Vogi never calls the `-contributor` model ids.
@@ -68,11 +75,14 @@ shows the same score table.
 - It does not score pronunciation. Speech-to-text hides pronunciation errors, so Vogi does not claim it.
 - The test set is small, and no native-speaker teacher has reviewed it yet. It shows how the models compare. It does not prove that a model is accurate.
 - Vogi is not a chat. It has no free-text conversation.
+- The test set covers A1 to B1. Corrections at B2 to C2 are not scored yet.
+- "My mistakes" lives in one browser. There are no accounts.
 
 ## Next
 
-The correction format (`docs/SCHEMA.md`) has a version, so my language app Sprachvogel
-can call the same format later.
+Vogi will become the writing part of my language app Sprachvogel, with the mistake list
+synced to the learner's account. The correction format (`docs/SCHEMA.md`) has a version,
+so the app can call the same format.
 
 ## Built with
 
