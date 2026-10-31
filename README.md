@@ -127,8 +127,8 @@ so the app can call the same format.
 
 ## Built with
 
-Python, FastAPI and the OpenAI Python SDK (the Model API is OpenAI-compatible). I wrote the
-code with an AI coding assistant (Claude Code) and reviewed it.
+Python, FastAPI and the OpenAI Python SDK (the Model API is OpenAI-compatible). I built it with
+an AI coding assistant and tested every feature myself.
 
 ## Licence
 
