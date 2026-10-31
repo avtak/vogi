@@ -162,12 +162,12 @@ function renderTry(items) {
 
 function _norm(s) { return s.replace(/[\s.!?,;:]+/g, " ").trim(); }
 
-async function runCorrect(text, fromPhoto = false) {
+async function runCorrect(text, fromPhoto = false, spoken = false) {
   state.text = text.trim(); state.level = picked("level"); state.fromPhoto = fromPhoto && !!state.photo;
   if (!state.text) { status("Write a sentence first."); return; }
   $("go").disabled = true; status("Vogi is reading your text …");
   try {
-    const data = await api("/api/correct", { text: state.text, level: state.level, mode: picked("mode"), provider: $("provider").value || null });
+    const data = await api("/api/correct", { text: state.text, level: state.level, mode: spoken ? "grammar" : picked("mode"), spoken, provider: $("provider").value || null });
     renderResult(data);
     remember(data.result.edits.filter((e, k) => e.severity === "error" && data.checks.edits[k].grounded));
     status(""); $("result").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -284,6 +284,146 @@ function practiseTop() {
   runPractice(cats.flatMap(([, items]) => items.slice(-2)).map((m) => ({ ...m, severity: "error" })).map(({ t, level, ...e }) => e));
 }
 
+// Talk: a role-play with a mission. The partner never corrects; the feedback comes after.
+const talk = { scene: null, history: [], busy: false };
+const MAX_TURNS = 8;
+
+async function loadScenes() {
+  try {
+    const list = await (await fetch("/api/scenes")).json();
+    $("scenes").replaceChildren(...list.map((sc) => {
+      const b = el("button", { class: "scene" }, el("strong", {}, sc.title), el("small", {}, sc.goals.join(" · ")));
+      b.onclick = () => startScene(sc);
+      return b;
+    }));
+  } catch { /* the server is down: loadProviders says so */ }
+}
+
+function bubble(role, text) {
+  const b = el("div", { class: "bubble " + role }, el("span", { class: "who" }, role === "partner" ? talk.scene.title : "You"), text);
+  if (role === "partner") {
+    const again = el("button", { class: "btn", title: "Say it again", "aria-label": "Say it again" }, "🔊");
+    again.style.marginLeft = "6px"; again.style.padding = "0 6px";
+    again.onclick = () => speak(text, true);
+    b.append(again);
+  }
+  $("chat").append(b); $("chat").scrollTop = $("chat").scrollHeight;
+}
+
+function speak(text, force = false) {
+  if (!("speechSynthesis" in window) || (!force && !$("voice").checked)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "de-DE";
+  const v = speechSynthesis.getVoices().find((x) => x.lang && x.lang.toLowerCase().startsWith("de"));
+  if (v) u.voice = v;
+  u.rate = ["A0", "A1", "A2"].includes(picked("level")) ? 0.85 : 1;
+  speechSynthesis.speak(u);
+}
+
+function startScene(sc) {
+  Object.assign(talk, { scene: sc, history: [], busy: false });
+  $("scene-title").textContent = sc.title;
+  $("goals").replaceChildren(...sc.goals.map((g) => el("li", {}, g)));
+  $("chat").replaceChildren(); $("talk-result").classList.add("hidden");
+  $("scene-pick").classList.add("hidden"); $("talk").classList.remove("hidden");
+  partnerTurn();
+}
+
+function setBusy(b) { talk.busy = b; ["mic", "send", "say"].forEach((id) => ($(id).disabled = b)); }
+
+async function partnerTurn() {
+  setBusy(true); status(talk.history.length ? "The partner is answering …" : "The partner is starting …");
+  try {
+    const data = await api("/api/talk", { scene: talk.scene.id, level: picked("level"), history: talk.history, provider: $("provider").value || null });
+    const r = data.result;
+    talk.history.push({ role: "partner", text: r.reply });
+    bubble("partner", r.reply); speak(r.reply);
+    [...$("goals").children].forEach((li, i) => li.classList.toggle("done", r.goals_done.includes(i + 1)));
+    talk.goalsDone = r.goals_done.length;
+    status("");
+    if (r.finished) return endTalk();
+  } catch (e) { status(e.message); }
+  setBusy(false);
+}
+
+function learnerSay(text) {
+  text = text.trim();
+  if (!text || talk.busy) return;
+  talk.history.push({ role: "learner", text });
+  bubble("learner", text);
+  if (talk.history.filter((t) => t.role === "learner").length >= MAX_TURNS) return endTalk();
+  partnerTurn();
+}
+
+function endTalk() {
+  setBusy(true);
+  const said = talk.history.filter((t) => t.role === "learner").map((t) => t.text);
+  if (!said.length) { status("Say something first."); setBusy(false); return; }
+  $("talk-result").textContent = `Mission: ${talk.goalsDone || 0} of ${talk.scene.goals.length} goals reached. Your feedback on what you said is below.`;
+  $("talk-result").classList.remove("hidden");
+  status("Vogi is checking what you said …");
+  runCorrect(said.join("\n"), false, true);
+}
+
+// Microphone: record, downsample to 16 kHz mono 16-bit WAV (what Muse Voice Transcribe takes), send.
+let rec = null;
+async function startRec() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+  const ctx = new AudioContext();
+  const src = ctx.createMediaStreamSource(stream);
+  const proc = ctx.createScriptProcessor(4096, 1, 1);
+  const chunks = [];
+  proc.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  src.connect(proc); proc.connect(ctx.destination);
+  rec = { stream, ctx, src, proc, chunks, rate: ctx.sampleRate, timer: setTimeout(() => toggleMic(), 60000) };
+}
+
+async function stopRec() {
+  const r = rec; rec = null; clearTimeout(r.timer);
+  r.src.disconnect(); r.proc.disconnect(); r.stream.getTracks().forEach((t) => t.stop());
+  const len = r.chunks.reduce((n, c) => n + c.length, 0);
+  await r.ctx.close();
+  if (len < r.rate * 0.4) return null;
+  const off = new OfflineAudioContext(1, Math.ceil((len * 16000) / r.rate), 16000);
+  const buf = off.createBuffer(1, len, r.rate);
+  let o = 0; for (const c of r.chunks) { buf.copyToChannel(c, 0, o); o += c.length; }
+  const s = off.createBufferSource(); s.buffer = buf; s.connect(off.destination); s.start();
+  const pcm = (await off.startRendering()).getChannelData(0);
+  const out = new DataView(new ArrayBuffer(44 + pcm.length * 2));
+  const w = (i, str) => [...str].forEach((ch, k) => out.setUint8(i + k, ch.charCodeAt(0)));
+  w(0, "RIFF"); out.setUint32(4, 36 + pcm.length * 2, true); w(8, "WAVE"); w(12, "fmt ");
+  out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+  out.setUint32(24, 16000, true); out.setUint32(28, 32000, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+  w(36, "data"); out.setUint32(40, pcm.length * 2, true);
+  for (let i = 0; i < pcm.length; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, pcm[i])) * 0x7fff, true);
+  return new Blob([out], { type: "audio/wav" });
+}
+
+async function toggleMic() {
+  const mic = $("mic");
+  if (!rec) {
+    try { speechSynthesis && speechSynthesis.cancel(); await startRec(); } catch { status("Vogi cannot use the microphone. Type your answer instead."); return; }
+    mic.classList.add("on"); mic.textContent = "■ Stop and send"; status("Listening … speak now.");
+    return;
+  }
+  mic.classList.remove("on"); mic.textContent = "🎤 Start speaking";
+  const wav = await stopRec();
+  if (!wav) { status("That was too short. Try again."); return; }
+  await sendSpeech(wav);
+}
+
+async function sendSpeech(wav) {
+  setBusy(true); status("Muse Voice Transcribe is writing down what you said …");
+  const form = new FormData(); form.append("audio", wav, "speech.wav");
+  try {
+    const d = await api("/api/transcribe", form, true);
+    setBusy(false); status("");
+    if (!d.text) { status("Vogi did not hear any words. Try again."); return; }
+    learnerSay(d.text);
+  } catch (e) { setBusy(false); status(e.message); }
+}
+
 async function readPhoto(file) {
   if (!file) return;
   state.photo = file;
@@ -328,6 +468,9 @@ document.querySelectorAll(".tab").forEach((b) => b.onclick = () => {
   document.querySelectorAll(".tab").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-selected", x === b); });
   $("pane-type").classList.toggle("hidden", b.dataset.tab !== "type");
   $("pane-photo").classList.toggle("hidden", b.dataset.tab !== "photo");
+  $("pane-talk").classList.toggle("hidden", b.dataset.tab !== "talk");
+  $("mode-set").classList.toggle("hidden", b.dataset.tab === "talk");
+  $("go").classList.toggle("hidden", b.dataset.tab === "talk");
 });
 $("go").onclick = () => {
   const photo = document.querySelector(".tab.on").dataset.tab === "photo";
@@ -341,4 +484,9 @@ $("forget").onclick = () => { if (confirm("Forget all saved mistakes?")) { saveM
 $("show-full").onclick = () => { $("full").classList.remove("hidden"); $("show-full").classList.add("hidden"); };
 try { $("tryfirst").checked = localStorage.getItem(TRY_KEY) !== "0"; } catch { /* storage blocked */ }
 $("tryfirst").onchange = () => { try { localStorage.setItem(TRY_KEY, $("tryfirst").checked ? "1" : "0"); } catch { /* ignore */ } };
-loadProviders(); loadBoard(); renderMemory();
+$("mic").onclick = toggleMic;
+$("send").onclick = () => { learnerSay($("say").value); $("say").value = ""; };
+$("say").onkeydown = (e) => { if (e.key === "Enter") $("send").click(); };
+$("end-talk").onclick = endTalk;
+$("new-scene").onclick = () => { $("talk").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); speechSynthesis && speechSynthesis.cancel(); };
+loadProviders(); loadBoard(); renderMemory(); loadScenes();

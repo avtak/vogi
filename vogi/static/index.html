@@ -17,6 +17,7 @@
     <div class="tabs" role="tablist">
       <button role="tab" class="tab on" data-tab="type" aria-selected="true">Type</button>
       <button role="tab" class="tab" data-tab="photo" aria-selected="false">Photo of handwriting</button>
+      <button role="tab" class="tab" data-tab="talk" aria-selected="false">Talk</button>
     </div>
 
     <div class="pane" id="pane-type">
@@ -38,6 +39,28 @@
       </div>
     </div>
 
+    <div class="pane hidden" id="pane-talk">
+      <div id="scene-pick">
+        <p class="lbl">Pick a scene. You speak, an AI partner answers. Vogi gives feedback at the end.</p>
+        <div class="scenes" id="scenes"></div>
+      </div>
+      <div id="talk" class="hidden">
+        <div class="mission"><strong id="scene-title"></strong> · your mission:<ol id="goals"></ol></div>
+        <div class="chat" id="chat" aria-live="polite"></div>
+        <p class="summary hidden" id="talk-result"></p>
+        <div class="row">
+          <button class="btn primary" id="mic">🎤 Start speaking</button>
+          <input type="text" id="say" maxlength="300" placeholder="or type your answer" autocomplete="off">
+          <button class="btn" id="send">Send</button>
+        </div>
+        <div class="row">
+          <label class="try"><input type="checkbox" id="voice" checked> Partner speaks aloud (browser voice)</label>
+          <button class="btn" id="end-talk">End and get feedback</button>
+          <button class="btn" id="new-scene">Other scene</button>
+        </div>
+      </div>
+    </div>
+
     <div class="row">
       <fieldset class="seg" id="level">
         <legend>Level</legend>
@@ -49,7 +72,7 @@
         <label><input type="radio" name="level" value="C1">C1</label>
         <label><input type="radio" name="level" value="C2">C2</label>
       </fieldset>
-      <fieldset class="seg" id="mode">
+      <fieldset class="seg" id="mode-set">
         <legend>What do you want?</legend>
         <label><input type="radio" name="mode" value="grammar" checked>Grammar only</label>
         <label><input type="radio" name="mode" value="words">Better words</label>

@@ -5,20 +5,23 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Literal
 
+import httpx
 import openai
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
-from . import core, providers
+from . import core, providers, scenes
 from .schema import Edit, Exercise, Level, Mode
 
 STATIC = Path(__file__).parent / "static"
 RESULTS = Path(__file__).parent.parent / "eval" / "results"
 MAX_TEXT = 1500
 MAX_IMAGE = 8_000_000
+MAX_AUDIO = 60 * 16000 * 2 + 1000  # 60 s of 16 kHz mono 16-bit PCM
 IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 providers.load_env_file()
@@ -30,6 +33,19 @@ class CorrectIn(BaseModel):
     text: str = Field(min_length=1, max_length=MAX_TEXT)
     level: Level = "A2"
     mode: Mode = "grammar"
+    provider: str | None = None
+    spoken: bool = False
+
+
+class Turn(BaseModel):
+    role: Literal["partner", "learner"]
+    text: str = Field(max_length=600)
+
+
+class TalkIn(BaseModel):
+    scene: str
+    level: Level = "A2"
+    history: list[Turn] = Field(default_factory=list, max_length=30)
     provider: str | None = None
 
 
@@ -78,7 +94,7 @@ def list_providers():
 
 @app.post("/api/correct")
 def correct(body: CorrectIn):
-    return _run(core.correct, _provider(body.provider), body.text.strip(), body.level, body.mode)
+    return _run(core.correct, _provider(body.provider), body.text.strip(), body.level, body.mode, body.spoken)
 
 
 @app.post("/api/read")
@@ -105,6 +121,35 @@ async def locate(image: UploadFile = File(...), originals: str = Form(...), prov
     if not words:
         raise HTTPException(400, "Nothing to mark.")
     return _run(core.locate, _provider(provider), data, image.content_type, words)
+
+
+@app.get("/api/scenes")
+def list_scenes():
+    return scenes.public()
+
+
+@app.post("/api/talk")
+def talk(body: TalkIn):
+    scene = scenes.SCENES.get(body.scene)
+    if not scene:
+        raise HTTPException(400, "Unknown scene.")
+    history = [t.model_dump() for t in body.history]
+    return _run(core.partner, _provider(body.provider), scene, body.level, history)
+
+
+@app.post("/api/transcribe")
+async def transcribe(audio: UploadFile = File(...)):
+    data = await audio.read()
+    if len(data) > MAX_AUDIO or data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        raise HTTPException(400, "Send a WAV recording of at most 60 seconds.")
+    try:
+        return core.transcribe(data)
+    except RuntimeError as e:
+        raise HTTPException(400, str(e)) from e
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(502, f"Muse Voice Transcribe answered {e.response.status_code}.") from e
+    except httpx.HTTPError as e:
+        raise HTTPException(502, "Could not reach Muse Voice Transcribe.") from e
 
 
 @app.post("/api/exercises")

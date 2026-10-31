@@ -85,6 +85,12 @@ class Marks(Strict):
     marks: list[Mark]
 
 
+class PartnerTurn(Strict):
+    reply: str = Field(description="The partner's next line, in German, in role.")
+    goals_done: list[int] = Field(description="Numbers (from 1) of the mission goals the learner has reached so far.")
+    finished: bool = Field(description="true when the conversation has come to a natural end.")
+
+
 class Verdict(Strict):
     correct: bool
     feedback: str = Field(description="One short sentence in simple English.")

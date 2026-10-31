@@ -4,17 +4,19 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import re
 import time
 from difflib import SequenceMatcher
 from typing import TypeVar
 
+import httpx
 import openai
 from pydantic import BaseModel, ValidationError
 
 from . import prompts
 from .providers import Provider, client
-from .schema import Correction, Exercises, Marks, Reading, Verdict, json_schema
+from .schema import Correction, Exercises, Marks, PartnerTurn, Reading, Verdict, json_schema
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -68,8 +70,8 @@ def ask(p: Provider, messages: list[dict], model: type[T]) -> tuple[T, dict]:
     }
 
 
-def correct(p: Provider, text: str, level: str, mode: str) -> dict:
-    result, meta = ask(p, prompts.correct_messages(text, level, mode), Correction)
+def correct(p: Provider, text: str, level: str, mode: str, spoken: bool = False) -> dict:
+    result, meta = ask(p, prompts.correct_messages(text, level, mode, spoken), Correction)
     return {"result": result.model_dump(), "checks": verify(text, result, mode), "meta": meta}
 
 
@@ -99,6 +101,33 @@ def locate(p: Provider, image: bytes, mime: str, originals: list[str]) -> dict:
         ok = m.found and len(box) == 4 and box[2] > box[0] and box[3] > box[1] and 1 <= m.edit <= len(originals)
         marks.append({"edit": m.edit, "found": ok, "box": box if ok else None})
     return {"result": {"marks": marks}, "meta": meta}
+
+
+def partner(p: Provider, scene: dict, level: str, history: list[dict]) -> dict:
+    result, meta = ask(p, prompts.partner_messages(scene, level, history), PartnerTurn)
+    n = len(scene["goals"])
+    result.goals_done = sorted({g for g in result.goals_done if 1 <= g <= n})
+    return {"result": result.model_dump(), "meta": meta}
+
+
+def transcribe(wav: bytes) -> dict:
+    """Muse Voice Transcribe, file mode (dev.meta.ai/docs/speech-to-text). Only on the Model API."""
+    key = os.environ.get("MODEL_API_KEY")
+    if not key:
+        raise RuntimeError("Speech needs MODEL_API_KEY: Muse Voice Transcribe runs only on the Meta Model API.")
+    request = {"mode": "PUSH_TO_TALK", "model": "muse-voice-transcribe-1.0", "audioEncoding": "WAV",
+               "languageBias": ["German"]}
+    started = time.perf_counter()
+    r = httpx.post(
+        "https://api.meta.ai/v1/asr/transcribe",
+        headers={"Authorization": f"Bearer {key}"},
+        files={"request": (None, json.dumps(request), "application/json"), "audio": ("speech.wav", wav, "audio/wav")},
+        timeout=60,
+    )
+    r.raise_for_status()
+    d = r.json()
+    return {"text": (d.get("transcript") or "").strip(), "audio_ms": d.get("audioDurationMs"),
+            "ms": round((time.perf_counter() - started) * 1000), "model": "muse-voice-transcribe-1.0"}
 
 
 def exercises(p: Provider, level: str, edits: list[dict]) -> dict:

@@ -73,16 +73,39 @@ on a 0-1000 grid of the image: (0, 0) is the top-left corner, (1000, 1000) the b
 Return exactly one mark per number. Do not miss any. If the words are not in the photo, set found
 to false and box to [0, 0, 0, 0]. Return one JSON object in the given schema, nothing else."""
 
+PARTNER_SYSTEM = """You play a role in a spoken German conversation with an adult learner.
+You are {partner}
+Scene: {setting}
+Learner level: {level}
+
+Rules:
+- Speak only German, at the learner's level. A0 and A1: at most 8 words per line, very common words.
+  A2 and B1: one or two short sentences. B2 to C2: natural, as a real person would say it.
+- Stay in your role. Be natural and friendly. Ask one thing at a time, so the learner has to speak.
+- Never correct the learner's German and never explain grammar: the feedback comes after the talk.
+  If you do not understand, ask again in simple words.
+- The learner's text comes from speech recognition, so ignore punctuation and small spelling slips.
+- The learner's mission (do not read it out, but help the conversation get there):
+{goals}
+- goals_done: the numbers of every goal the learner has reached so far in the whole conversation.
+- finished: true only after the learner has said goodbye or the scene has clearly ended.
+Return one JSON object in the given schema, nothing else."""
+
 JUDGE_SYSTEM = """You check one answer to a German exercise. The expected answer is given.
 An answer is correct if it is correct German and fixes the target mistake, even if it differs from the
 expected answer. Spelling and capitalisation count. Return one JSON object in the given schema."""
 
 
-def correct_messages(text: str, level: str, mode: str) -> list[dict]:
+SPOKEN = ("This text was SPOKEN in a conversation and written down by speech recognition, one line per turn. "
+          "Ignore punctuation and capitalisation, and do not mark missing commas. Keep the line breaks.")
+
+
+def correct_messages(text: str, level: str, mode: str, spoken: bool = False) -> list[dict]:
+    extra = f"\n{SPOKEN}" if spoken else ""
     return [
         {"role": "system", "content": CORRECT_SYSTEM},
         {"role": "user", "content": (
-            f"Learner level: {LEVELS[level]}\n{MODES[mode]}\n\nLearner's text:\n<<<\n{text}\n>>>"
+            f"Learner level: {LEVELS[level]}\n{MODES[mode]}{extra}\n\nLearner's text:\n<<<\n{text}\n>>>"
         )},
     ]
 
@@ -106,6 +129,20 @@ def mark_messages(image_url: str, originals: list[str]) -> list[dict]:
             {"type": "image_url", "image_url": {"url": image_url}},
         ]},
     ]
+
+
+def partner_messages(scene: dict, level: str, history: list[dict]) -> list[dict]:
+    goals = "\n".join(f"  {i}. {g}" for i, g in enumerate(scene["goals"], 1))
+    system = PARTNER_SYSTEM.format(partner=scene["partner"], setting=scene["setting"], level=LEVELS[level], goals=goals)
+    msgs = [{"role": "system", "content": system}]
+    if not history:
+        msgs.append({"role": "user", "content": "(The learner arrives. Open the conversation in your role.)"})
+    for turn in history:
+        if turn["role"] == "partner":
+            msgs.append({"role": "assistant", "content": turn["text"]})
+        else:
+            msgs.append({"role": "user", "content": turn["text"]})
+    return msgs
 
 
 def judge_messages(exercise: dict, answer: str) -> list[dict]:

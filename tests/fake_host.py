@@ -40,6 +40,7 @@ CANNED = {
         {"edit": 1, "found": True, "box": [180, 120, 420, 230]},
         {"edit": 2, "found": True, "box": [520, 120, 760, 230]},
     ]},
+    "PartnerTurn": {"reply": "Guten Morgen! Was darf es sein?", "goals_done": [1], "finished": False},
     "Verdict": {"correct": True, "feedback": "Yes, the verb is now in position 2."},
 }
 
