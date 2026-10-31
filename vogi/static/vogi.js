@@ -1,13 +1,24 @@
 "use strict";
 const $ = (id) => document.getElementById(id);
-const state = { text: "", level: "A2", mode: "grammar", edits: [], photo: null, fromPhoto: false, origin: "write" };
+const state = { text: "", level: "", mode: "grammar", edits: [], photo: null, fromPhoto: false, origin: "write" };
 const MEMORY_KEY = "vogi.mistakes.v1";
 const TRY_KEY = "vogi.tryfirst";
 const LEVEL_KEY = "vogi.level";
 const EST_KEY = "vogi.level.estimates";
 const DISMISS_KEY = "vogi.level.dismissed";
-const LEVELS = ["A0", "A1", "A2", "B1", "B2", "C1", "C2"];
-const LEVEL_WORDS = { A0: "Just starting", A1: "Just starting", A2: "Everyday basics", B1: "Most things", B2: "Advanced", C1: "Advanced", C2: "Near native" };
+// Course steps used in Germany. Vogi estimates plain CEFR levels (A0 ... C2) from texts.
+const LEVELS = ["A1.1", "A1.2", "A2.1", "A2.2", "B1.1", "B1.2", "B2.1", "B2.2", "C1", "C2"];
+const LEVEL_DESC = {
+  "A1.1": "First steps: hello, numbers, my name", "A1.2": "Simple sentences: shopping, my day",
+  "A2.1": "Everyday basics: the doctor, a short email", "A2.2": "Everyday, also the past: what I did, short letters",
+  "B1.1": "Most things: work, plans, my opinion", "B1.2": "Most things, at length: formal emails, stories",
+  "B2.1": "Advanced: discussions, the news", "B2.2": "Advanced: arguments, formal letters",
+  "C1": "Fluent: work and study in German", "C2": "Near native: style and nuance",
+};
+const LEVEL_WORDS = Object.fromEntries(Object.entries(LEVEL_DESC).map(([k, v]) => [k, v.split(":")[0]]));
+const MAINS = ["A1", "A2", "B1", "B2", "C1", "C2"];
+const main = (lv) => (lv === "A0" ? "A1" : String(lv).slice(0, 2));
+const firstStep = (m) => LEVELS.find((lv) => main(lv) === m);
 const MODE_WORDS = { grammar: "Grammar only", words: "Better words", natural: "Sound natural" };
 
 function el(tag, attrs = {}, ...kids) {
@@ -49,27 +60,37 @@ function back() { show(nav.pop() || "home", false); }
 
 // Level: asked once in plain words, kept in this browser, shown as a chip.
 function setLevel(lv) {
+  if (!LEVELS.includes(lv) && MAINS.concat("A0").includes(lv)) lv = firstStep(main(lv)); // levels saved before 31.10
   if (!LEVELS.includes(lv)) return;
   state.level = lv; store(LEVEL_KEY, lv);
   $("level-chip").replaceChildren("Level: ", el("b", {}, `${LEVEL_WORDS[lv]} (${lv})`), el("u", {}, "change"));
   $("level-chip").classList.remove("hidden");
 }
-function askLevel() { show("level"); }
-function estimates() { try { return JSON.parse(stored(EST_KEY) || "[]").filter((x) => LEVELS.includes(x)); } catch { return []; } }
+function showSlider(i) {
+  const lv = LEVELS[i];
+  $("lv-code").textContent = lv; $("lv-desc").textContent = LEVEL_DESC[lv];
+  $("lv-range").setAttribute("aria-valuetext", `${lv}, ${LEVEL_DESC[lv]}`);
+}
+function askLevel() {
+  const i = Math.max(0, LEVELS.indexOf(state.level || "A2.1"));
+  $("lv-range").value = i; showSlider(i); show("level");
+}
+function estimates() { try { return JSON.parse(stored(EST_KEY) || "[]").filter((x) => MAINS.includes(main(x))); } catch { return []; } }
 function noteEstimate(lv) {
   $("suggest").classList.add("hidden");
-  if (!LEVELS.includes(lv)) return;
+  if (!MAINS.includes(main(lv || ""))) return;
   const list = estimates().concat(lv).slice(-5);
   store(EST_KEY, JSON.stringify(list));
   const last = list.slice(-3);
   if (last.length < 3) return;
-  const me = LEVELS.indexOf(state.level), idx = last.map((x) => LEVELS.indexOf(x));
+  const me = MAINS.indexOf(main(state.level)), idx = last.map((x) => MAINS.indexOf(main(x)));
   const above = idx.every((i) => i > me), below = idx.every((i) => i < me);
   if (!above && !below) return;
   // The gentlest step: the estimate nearest to the learner's level.
-  const target = last.sort((a, b) => Math.abs(LEVELS.indexOf(a) - me) - Math.abs(LEVELS.indexOf(b) - me))[0];
+  const nearest = last.map(main).sort((a, b) => Math.abs(MAINS.indexOf(a) - me) - Math.abs(MAINS.indexOf(b) - me))[0];
+  const target = firstStep(nearest);
   if (stored(DISMISS_KEY) === target) return;
-  $("suggest-text").textContent = `Your last texts look like ${target}. Switch?`;
+  $("suggest-text").textContent = `Your last texts look like ${nearest}. Switch to ${target}?`;
   $("suggest").classList.remove("hidden");
   $("suggest-yes").onclick = () => { setLevel(target); store(EST_KEY, "[]"); $("suggest").classList.add("hidden"); };
   $("suggest-no").onclick = () => { store(DISMISS_KEY, target); $("suggest").classList.add("hidden"); };
@@ -454,6 +475,25 @@ function bubble(role, text) {
   $("chat").append(b); $("chat").scrollTop = $("chat").scrollHeight;
 }
 
+// Words you can use: building blocks for the next line. Open by default at A1 and A2.
+function helpWords(words) {
+  document.querySelectorAll(".helpwords").forEach((n) => n.remove());
+  if (!words.length) return;
+  const box = el("div", { class: "helpwords" });
+  const chips = () => box.replaceChildren("Words you can use:", ...words.map((w) => {
+    const b = el("button", { class: "word", type: "button" }, w);
+    b.onclick = () => {
+      const piece = w.replace(/\s*(…|\.\.\.)\s*$/, "").trim();
+      $("say").value = ($("say").value.trim() + " " + piece).trim() + " ";
+      $("say").focus();
+    };
+    return b;
+  }));
+  if (["A1", "A2"].includes(main(state.level))) chips();
+  else { const need = el("button", { class: "need", type: "button" }, "Need words?"); need.onclick = chips; box.append(need); }
+  $("chat").append(box); $("chat").scrollTop = $("chat").scrollHeight;
+}
+
 function speak(text, force = false) {
   if (!("speechSynthesis" in window) || (!force && !$("voice").checked)) return;
   speechSynthesis.cancel();
@@ -461,7 +501,7 @@ function speak(text, force = false) {
   u.lang = "de-DE";
   const v = speechSynthesis.getVoices().find((x) => x.lang && x.lang.toLowerCase().startsWith("de"));
   if (v) u.voice = v;
-  u.rate = ["A0", "A1", "A2"].includes(state.level) ? 0.85 : 1;
+  u.rate = ["A1", "A2"].includes(main(state.level)) ? 0.85 : 1;
   speechSynthesis.speak(u);
 }
 
@@ -483,6 +523,8 @@ async function partnerTurn() {
     const r = data.result;
     talk.history.push({ role: "partner", text: r.reply });
     bubble("partner", r.reply); speak(r.reply);
+    talk.help = r.help || [];
+    helpWords(talk.help);
     [...$("goals").children].forEach((li, i) => li.classList.toggle("done", r.goals_done.includes(i + 1)));
     talk.goalsDone = r.goals_done.length;
     status("");
@@ -522,13 +564,15 @@ async function startRec() {
   rec = { stream, ctx, src, proc, chunks, rate: ctx.sampleRate, timer: setTimeout(() => toggleMic(), 60000) };
 }
 
+const RATE = 24000; // Muse Voice Transcribe takes 16 or 24 kHz; 24 kHz keeps more of the voice
+
 async function stopRec() {
   const r = rec; rec = null; clearTimeout(r.timer);
   r.src.disconnect(); r.proc.disconnect(); r.stream.getTracks().forEach((t) => t.stop());
   const len = r.chunks.reduce((n, c) => n + c.length, 0);
   await r.ctx.close();
   if (len < r.rate * 0.4) return null;
-  const off = new OfflineAudioContext(1, Math.ceil((len * 16000) / r.rate), 16000);
+  const off = new OfflineAudioContext(1, Math.ceil((len * RATE) / r.rate), RATE);
   const buf = off.createBuffer(1, len, r.rate);
   let o = 0; for (const c of r.chunks) { buf.copyToChannel(c, 0, o); o += c.length; }
   const s = off.createBufferSource(); s.buffer = buf; s.connect(off.destination); s.start();
@@ -537,7 +581,7 @@ async function stopRec() {
   const w = (i, str) => [...str].forEach((ch, k) => out.setUint8(i + k, ch.charCodeAt(0)));
   w(0, "RIFF"); out.setUint32(4, 36 + pcm.length * 2, true); w(8, "WAVE"); w(12, "fmt ");
   out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
-  out.setUint32(24, 16000, true); out.setUint32(28, 32000, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+  out.setUint32(24, RATE, true); out.setUint32(28, RATE * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
   w(36, "data"); out.setUint32(40, pcm.length * 2, true);
   for (let i = 0; i < pcm.length; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, pcm[i])) * 0x7fff, true);
   return new Blob([out], { type: "audio/wav" });
@@ -559,11 +603,17 @@ async function toggleMic() {
 async function sendSpeech(wav) {
   setBusy(true); status("Muse Voice Transcribe is writing down what you said …");
   const form = new FormData(); form.append("audio", wav, "speech.wav");
+  // Bias the recogniser to this scene's words and the words on screen.
+  const onScreen = (talk.help || []).concat(talk.history.slice(-1).map((t) => t.text)).join(" ")
+    .split(/[\s,.!?…]+/).filter((w) => w.length > 2);
+  form.append("keywords", JSON.stringify([...new Set((talk.scene.words || []).concat(onScreen))].slice(0, 40)));
   try {
     const d = await api("/api/transcribe", form, true);
     setBusy(false); status("");
     if (!d.text) { status("Vogi did not hear any words. Try again."); return; }
-    learnerSay(d.text);
+    // The learner checks what Vogi heard before it counts: a misheard word is not their mistake.
+    $("say").value = d.text; $("say").focus();
+    status("Vogi heard this. Fix any word it got wrong, then press Send.");
   } catch (e) { setBusy(false); status(e.message); }
 }
 
@@ -624,7 +674,8 @@ function optionsLine() {
 // Wiring
 $("brand").onclick = () => show("home");
 $("level-chip").onclick = askLevel;
-document.querySelectorAll("[data-level]").forEach((b) => b.onclick = () => { setLevel(b.dataset.level); back(); });
+$("lv-range").oninput = () => showSlider(Number($("lv-range").value));
+$("lv-ok").onclick = () => { const first = !state.level; setLevel(LEVELS[Number($("lv-range").value)]); first ? show("home", false) : back(); };
 document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => show(b.dataset.go));
 document.querySelectorAll("[data-back]").forEach((b) => b.onclick = back);
 document.querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => {
@@ -660,5 +711,6 @@ $("pv-delete").onclick = async () => {
 };
 optionsLine();
 const savedLevel = stored(LEVEL_KEY);
-if (LEVELS.includes(savedLevel)) { setLevel(savedLevel); show("home", false); } else { show("level", false); }
+setLevel(savedLevel);
+if (state.level) show("home", false); else { $("lv-range").value = 2; showSlider(2); show("level", false); }
 loadProviders(); loadBoard(); renderMemory(); loadScenes(); renderPages();

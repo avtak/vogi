@@ -6,10 +6,19 @@ LEVELS = {
     "A0": "A0 (new to German, before A1): single words, set phrases, very short sentences. "
           "Explain in very simple English with no grammar terms.",
     "A1": "A1 (beginner): short main clauses, present tense, first Perfekt forms, about 600 everyday words.",
+    "A1.1": "A1.1 (first weeks of German): single words, set phrases, very short main clauses in the present tense. "
+            "Explain in very simple English with no grammar terms.",
+    "A1.2": "A1.2 (end of A1): short main clauses, present tense, modal verbs, first Perfekt forms, about 600 everyday words.",
+    "A2.1": "A2.1 (start of A2): Perfekt, dative, separable verbs, weil and dass side clauses, everyday topics.",
+    "A2.2": "A2.2 (end of A2): Präteritum of sein, haben and modal verbs, wenn and als, comparatives, short letters.",
     "A2": "A2 (elementary): Perfekt, modal verbs, weil/dass/wenn side clauses, dative, everyday topics.",
     "B1": "B1 (intermediate): Präteritum, relative clauses, passive, connectors like obwohl and deshalb.",
+    "B1.1": "B1.1 (start of B1): Präteritum, relative clauses, obwohl and deshalb, opinions with reasons.",
+    "B1.2": "B1.2 (end of B1): passive, Konjunktiv II for wishes and advice, longer texts and formal emails.",
     "B2": "B2 (upper intermediate): Konjunktiv II, passive with modal verbs, n-declension, "
           "two-part connectors, argument texts and formal letters. Grammar terms are fine.",
+    "B2.1": "B2.1 (start of B2): Konjunktiv II, passive with modal verbs, n-declension, two-part connectors.",
+    "B2.2": "B2.2 (end of B2): argument texts, formal letters, nominal style beginning, precise connectors. Grammar terms are fine.",
     "C1": "C1 (advanced): Nominalstil, extended participle attributes, precise connectors, "
           "register and collocations. Explain precisely, with grammar terms.",
     "C2": "C2 (near native): idiom, nuance, rhythm and register of an educated native writer. "
@@ -86,6 +95,10 @@ Rules:
   A2 and B1: one or two short sentences. B2 to C2: natural, as a real person would say it.
 - Stay in your role. Be natural and friendly. Ask one thing at a time, so the learner has to speak.
 - Never correct the learner's German and never explain grammar: the feedback comes after the talk.
+- `help`: 2 to 4 short German building blocks for the learner's NEXT line, matched to their level and
+  to what you just asked, e.g. "Ich möchte …", "zwei Brötchen", "Was kostet …?". Pieces to build
+  with, never the full answer. At A1 and A2 give the most common words; at B2 and above give
+  one or two useful set phrases.
   If you do not understand, ask again in simple words.
 - The learner's text comes from speech recognition, so ignore punctuation and small spelling slips.
 - The learner's mission (do not read it out, but help the conversation get there):

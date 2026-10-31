@@ -183,3 +183,13 @@ th { color: var(--muted); font-weight: 600; }
   .choice strong { font-size: 18px; }
   .scenes { grid-template-columns: 1fr; }
 }
+.slider { margin-top: 8px; }
+.lv-now { font-size: 18px; min-height: 3.2em; margin: 6px 0 10px; }
+.lv-now strong { font-size: 26px; margin-right: 6px; }
+#lv-range { width: 100%; accent-color: var(--accent); height: 34px; cursor: pointer; }
+.ticks { position: relative; height: 18px; margin: 0 10px; font-size: 13px; color: var(--muted); }
+.ticks span { position: absolute; transform: translateX(-50%); }
+.slider .big-btn { width: 100%; margin-top: 14px; }
+.helpwords { align-self: flex-start; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; max-width: 90%; font-size: 14px; color: var(--muted); }
+.helpwords button.word { font: inherit; font-size: 15px; padding: 4px 10px; border-radius: 999px; border: 1px dashed var(--accent); background: transparent; color: var(--ink); cursor: pointer; }
+.helpwords button.need { font: inherit; font-size: 14px; background: none; border: 0; color: var(--accent); text-decoration: underline; cursor: pointer; padding: 0; }

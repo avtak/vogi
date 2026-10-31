@@ -10,7 +10,11 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Level = Literal["A0", "A1", "A2", "B1", "B2", "C1", "C2"]
+# The learner's level: the course steps used in Germany (A1.1 ... B2.2), then C1 and C2.
+# The plain CEFR levels are still accepted. CefrLevel is what Vogi estimates from a text.
+CefrLevel = Literal["A0", "A1", "A2", "B1", "B2", "C1", "C2"]
+Level = Literal["A1.1", "A1.2", "A2.1", "A2.2", "B1.1", "B1.2", "B2.1", "B2.2",
+                "A0", "A1", "A2", "B1", "B2", "C1", "C2"]
 Mode = Literal["grammar", "words", "natural"]
 
 Category = Literal[
@@ -54,7 +58,7 @@ class Correction(Strict):
     corrected_text: str = Field(description="The learner's whole text with every edit applied.")
     edits: list[Edit] = Field(description="One entry per change, in text order. Empty if nothing changes.")
     summary: str = Field(description="One encouraging sentence in simple English: what to practise next.")
-    level_estimate: Level = Field(
+    level_estimate: CefrLevel = Field(
         description="The CEFR level this text shows, judged by the range of grammar and words used, not by the number of mistakes."
     )
 
@@ -90,6 +94,9 @@ class Marks(Strict):
 
 class PartnerTurn(Strict):
     reply: str = Field(description="The partner's next line, in German, in role.")
+    help: list[str] = Field(
+        description="2 to 4 short German building blocks the learner can use to answer this line, at their level. Never a full answer."
+    )
     goals_done: list[int] = Field(description="Numbers (from 1) of the mission goals the learner has reached so far.")
     finished: bool = Field(description="true when the conversation has come to a natural end.")
 

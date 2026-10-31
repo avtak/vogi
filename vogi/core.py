@@ -32,8 +32,12 @@ def _strip_fences(s: str) -> str:
     return m.group(1) if m else s
 
 
-def ask(p: Provider, messages: list[dict], model: type[T]) -> tuple[T, dict]:
-    """One structured call. Returns the validated object and usage facts."""
+def ask(p: Provider, messages: list[dict], model: type[T], effort: str | None = None) -> tuple[T, dict]:
+    """One structured call. Returns the validated object and usage facts.
+
+    effort: Muse Spark's reasoning_effort (minimal ... max, dev.meta.ai/docs/reasoning). Only sent
+    to the Meta Model API; other hosts get the model's default.
+    """
     schema = json_schema(model)
     fmt = {"type": "json_schema", "json_schema": {"name": model.__name__, "strict": True, "schema": schema}}
     started = time.perf_counter()
@@ -44,6 +48,8 @@ def ask(p: Provider, messages: list[dict], model: type[T]) -> tuple[T, dict]:
         attempts += 1
         try:
             kwargs = {"response_format": fmt} if (p.native_schema and mode == "native-schema") else {}
+            if effort and p.id == "meta":
+                kwargs["reasoning_effort"] = effort
             resp = client(p).chat.completions.create(model=p.model, messages=msgs, **kwargs)
         except openai.BadRequestError:
             if mode != "native-schema":
@@ -142,19 +148,24 @@ def locate(p: Provider, image: bytes, mime: str, originals: list[str], text: str
 
 
 def partner(p: Provider, scene: dict, level: str, history: list[dict]) -> dict:
-    result, meta = ask(p, prompts.partner_messages(scene, level, history), PartnerTurn)
+    # minimal reasoning: 2-3 s a turn instead of about 5, with replies as good (tested 31.10.2026)
+    result, meta = ask(p, prompts.partner_messages(scene, level, history), PartnerTurn, effort="minimal")
     n = len(scene["goals"])
     result.goals_done = sorted({g for g in result.goals_done if 1 <= g <= n})
     return {"result": result.model_dump(), "meta": meta}
 
 
-def transcribe(wav: bytes) -> dict:
+def transcribe(wav: bytes, keywords: list[str] | None = None) -> dict:
     """Muse Voice Transcribe, file mode (dev.meta.ai/docs/speech-to-text). Only on the Model API."""
     key = os.environ.get("MODEL_API_KEY")
     if not key:
         raise RuntimeError("Speech needs MODEL_API_KEY: Muse Voice Transcribe runs only on the Meta Model API.")
     request = {"mode": "PUSH_TO_TALK", "model": "muse-voice-transcribe-1.0", "audioEncoding": "WAV",
                "languageBias": ["German"]}
+    if keywords:
+        # Vocabulary biasing (dev.meta.ai/docs/speech-to-text): the scene's words help with
+        # short phrases like "drei Brötchen" that are easy to mishear.
+        request["keywords"] = keywords[:40]
     started = time.perf_counter()
     r = httpx.post(
         "https://api.meta.ai/v1/asr/transcribe",
@@ -164,7 +175,8 @@ def transcribe(wav: bytes) -> dict:
     )
     r.raise_for_status()
     d = r.json()
-    return {"text": (d.get("transcript") or "").strip(), "audio_ms": d.get("audioDurationMs"),
+    text = re.sub(r"([.!?])\1+$", r"\1", (d.get("transcript") or "").strip())
+    return {"text": text, "audio_ms": d.get("audioDurationMs"),
             "ms": round((time.perf_counter() - started) * 1000), "model": "muse-voice-transcribe-1.0"}
 
 

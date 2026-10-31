@@ -21,7 +21,7 @@ STATIC = Path(__file__).parent / "static"
 RESULTS = Path(__file__).parent.parent / "eval" / "results"
 MAX_TEXT = 1500
 MAX_IMAGE = 8_000_000
-MAX_AUDIO = 60 * 16000 * 2 + 1000  # 60 s of 16 kHz mono 16-bit PCM
+MAX_AUDIO = 60 * 24000 * 2 + 1000  # 60 s of 24 kHz mono 16-bit PCM
 IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 providers.load_env_file()
@@ -139,12 +139,16 @@ def talk(body: TalkIn):
 
 
 @app.post("/api/transcribe")
-async def transcribe(audio: UploadFile = File(...)):
+async def transcribe(audio: UploadFile = File(...), keywords: str = Form("[]")):
     data = await audio.read()
+    try:
+        words = [str(w)[:40] for w in json.loads(keywords) if str(w).strip()][:40]
+    except (ValueError, TypeError):
+        words = []
     if len(data) > MAX_AUDIO or data[:4] != b"RIFF" or data[8:12] != b"WAVE":
         raise HTTPException(400, "Send a WAV recording of at most 60 seconds.")
     try:
-        return core.transcribe(data)
+        return core.transcribe(data, words)
     except RuntimeError as e:
         raise HTTPException(400, str(e)) from e
     except httpx.HTTPStatusError as e:

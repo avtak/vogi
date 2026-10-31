@@ -15,8 +15,9 @@ Built for the Meta Global AI Developer Hackathon (Indie track, "Build for Your W
 
 ## How a learner uses it
 
-1. Once: "How much German do you know?" Four plain answers instead of CEFR codes. Vogi also
-   estimates the level of every text and suggests a change when three texts in a row differ.
+1. Once: "How much German do you know?" A slider with the course steps used in Germany
+   (A1.1, A1.2 ... B2.2, C1, C2), each with a plain description. Vogi also estimates the level
+   of every text and suggests a change when three texts in a row differ.
 2. Home has three choices: **Check my writing**, **Practise speaking**, **My progress**.
 3. Check my writing: one text box with a camera button. Vogi marks each mistake with a hint,
    the learner fixes them one by one, then sees the rule and the full correction. On a photo,
@@ -48,7 +49,7 @@ history). No code, data or prompts come from my earlier app, Sprachvogel.
 | Self-check | `vogi/core.py` `verify()` | Before the learner sees an answer, Vogi checks that each change points at words really in the text, and flags changes that have no explanation |
 | Handwriting | `/api/read` | Muse Spark copies the handwritten text with its mistakes. The learner confirms the text before any correction |
 | Red pen | `/api/locate` | Muse Spark's perception grounding returns a box (0-1000 grid) around each wrong word on the photo; the page draws the numbered marks |
-| Talk | `vogi/scenes.py`, `/api/talk`, `/api/transcribe` | Five scenes with a mission. The partner (Muse Spark) stays in role at the learner's level and never corrects mid-talk; it tracks which mission goals are reached. The browser records the learner, converts the audio to 16 kHz WAV, and Muse Voice Transcribe writes it down. At the end, everything the learner said goes through try first |
+| Talk | `vogi/scenes.py`, `/api/talk`, `/api/transcribe` | Five scenes with a mission. Under each partner line, 2 to 4 "words you can use" for the learner's level. The learner sees what Vogi heard and fixes it before it counts. The recogniser gets the scene's words as keywords, and the partner runs at `reasoning_effort="minimal"` (about 2 s a turn). The partner (Muse Spark) stays in role at the learner's level and never corrects mid-talk; it tracks which mission goals are reached. The browser records the learner, converts the audio to 16 kHz WAV, and Muse Voice Transcribe writes it down. At the end, everything the learner said goes through try first |
 | My pages | `vogi/static/vogi.js` | Every checked photo is kept in the browser (IndexedDB) with its red marks and corrections, so the learner can reopen an old homework page |
 | My mistakes | `vogi/static/vogi.js` | Each check saves its error categories in the learner's browser; "Practise my top 3" builds exercises from the most frequent ones |
 | Practice | `/api/exercises`, `/api/check` | Three exercises from the learner's own mistakes; an exact-match check first, the model as judge only for rewritten sentences |
