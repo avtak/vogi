@@ -520,7 +520,7 @@ function openOwn() {
 async function ownMic() {
   const b = $("own-mic");
   if (!rec) {
-    try { startLive({ target: "own-text", lang: "any", keywords: [] }); await startRec(); }
+    try { startLive({ target: "own-text", lang: "any", keywords: [] }); await startRec(ownMic); }
     catch { finishLive(); status("Vogi cannot use the microphone. Type your situation instead."); return; }
     b.classList.add("on"); b.textContent = "■ Stop"; status("Listening … tell Vogi your situation, then press Stop.");
     return;
@@ -769,7 +769,7 @@ async function stopListening() {
 
 // Microphone: record, resample to 24 kHz mono 16-bit (Muse Voice Transcribe takes 16 or 24 kHz), send.
 let rec = null;
-async function startRec() {
+async function startRec(atLimit = toggleMic) {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
   const ctx = new AudioContext();
   const src = ctx.createMediaStreamSource(stream);
@@ -781,7 +781,7 @@ async function startRec() {
     liveFeed(c, ctx.sampleRate);
   };
   src.connect(proc); proc.connect(ctx.destination);
-  rec = { stream, ctx, src, proc, chunks, rate: ctx.sampleRate, timer: setTimeout(() => toggleMic(), 60000) };
+  rec = { stream, ctx, src, proc, chunks, rate: ctx.sampleRate, timer: setTimeout(() => atLimit(), 60000) }; // at most a minute per recording
 }
 
 const RATE = 24000; // Muse Voice Transcribe takes 16 or 24 kHz (PCM_24KHZ in the realtime handshake)
