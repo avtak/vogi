@@ -25,13 +25,12 @@
   <!-- First use: the level, in plain words -->
   <section class="view card hidden" id="v-level">
     <h1>How much German do you know?</h1>
-    <p class="note">Vogi explains your mistakes at your level. You can change this any time.</p>
-    <div class="slider">
-      <p class="lv-now"><strong id="lv-code">A2.1</strong> <span id="lv-desc"></span></p>
-      <input type="range" id="lv-range" min="0" max="9" step="1" value="2" aria-label="Your German level" aria-describedby="lv-desc">
-      <div class="ticks" aria-hidden="true"><span style="left: 0.0%">A1</span><span style="left: 22.2%">A2</span><span style="left: 44.4%">B1</span><span style="left: 66.7%">B2</span><span style="left: 88.9%">C1</span><span style="left: 100.0%">C2</span></div>
-      <p class="note">Not sure? Pick a little lower. Vogi looks at your texts and suggests a change.</p>
-      <button class="btn primary big-btn" id="lv-ok">Use this level</button>
+    <p class="note">Not sure? Pick the lower one. Vogi adjusts the level from your texts.</p>
+    <div class="choices">
+      <button class="choice" data-level="A1"><strong>I'm just starting</strong><small>Hello, numbers, short sentences · A1</small></button>
+      <button class="choice" data-level="A2"><strong>I can manage simple things</strong><small>Shopping, the doctor, a short email · A2</small></button>
+      <button class="choice" data-level="B1"><strong>I can talk about most everyday things</strong><small>Work, plans, my opinion · B1</small></button>
+      <button class="choice" data-level="B2"><strong>I'm quite good</strong><small>Discussions, the news, formal letters · B2 and up</small></button>
     </div>
   </section>
 
@@ -105,8 +104,8 @@
     </div>
     <div class="suggest hidden" id="suggest">
       <span id="suggest-text"></span>
-      <button class="btn primary" id="suggest-yes">Yes</button>
-      <button class="btn" id="suggest-no">Not now</button>
+      <button class="btn primary" id="suggest-yes">OK</button>
+      <button class="btn" id="suggest-no">Undo</button>
     </div>
   </section>
 

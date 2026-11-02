@@ -1,6 +1,6 @@
 # Vogi: a German writing and speaking coach on Meta's Muse models
 
-Vogi helps adults in Germany learn to write and speak German, from the first week (A1.1) to C2.
+Vogi helps adults in Germany learn to write and speak German, from the first week (A1) to C2.
 It works like a teacher's red pen, not a ghostwriter. It marks where each mistake is and gives a
 hint. The learner fixes it, and only then does Vogi show the answer and the rule. It remembers the
 learner's mistakes and trains them on the ones that keep coming back. The learner never writes a prompt.
@@ -18,9 +18,9 @@ work on paper.
 
 ## How a learner uses it
 
-1. **Once:** "How much German do you know?" A slider over the course steps used in Germany
-   (A1.1, A1.2 ... B2.2, C1, C2), each with a plain description. Vogi also estimates the level of
-   every text and suggests a change when three texts in a row differ.
+1. **Once:** "How much German do you know?" Four plain answers, from "I'm just starting" (A1) to
+   "I'm quite good" (B2 and up). Vogi estimates the level of every text. When three texts in a row
+   show another level, it switches by itself (up to C2) and says so, with an undo.
 2. **Check my writing:** type a text, or photograph handwritten homework. Vogi first shows what it
    read, and the learner confirms it. Then Vogi marks each mistake with a hint, and the learner
    fixes them one by one. On a photo, Vogi highlights the mistakes on the page itself.

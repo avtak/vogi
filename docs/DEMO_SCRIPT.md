@@ -6,7 +6,7 @@ zoom 125 %. Speak slowly. One take per part is fine. Cut the parts together afte
 ## Before you record (10 minutes)
 
 - Open the Space 2 minutes early, so it is awake. Enter the access code.
-- Set the level to **A2.1** with the slider.
+- Pick the level **"I can manage simple things" (A2)**.
 - Do two quick checks first, so "My progress" has something to show. For example
   `Der Kind spielt im Garten.` and `Ich habe mein Pass vergessen.`
 - Have the photo of your notebook page ready on the laptop.

@@ -6,19 +6,11 @@ const TRY_KEY = "vogi.tryfirst";
 const LEVEL_KEY = "vogi.level";
 const EST_KEY = "vogi.level.estimates";
 const DISMISS_KEY = "vogi.level.dismissed";
-// Course steps used in Germany. Vogi estimates plain CEFR levels (A0 ... C2) from texts.
-const LEVELS = ["A1.1", "A1.2", "A2.1", "A2.2", "B1.1", "B1.2", "B2.1", "B2.2", "C1", "C2"];
-const LEVEL_DESC = {
-  "A1.1": "First steps: hello, numbers, my name", "A1.2": "Simple sentences: shopping, my day",
-  "A2.1": "Everyday basics: the doctor, a short email", "A2.2": "Everyday, also the past: what I did, short letters",
-  "B1.1": "Most things: work, plans, my opinion", "B1.2": "Most things, at length: formal emails, stories",
-  "B2.1": "Advanced: discussions, the news", "B2.2": "Advanced: arguments, formal letters",
-  "C1": "Fluent: work and study in German", "C2": "Near native: style and nuance",
-};
-const LEVEL_WORDS = Object.fromEntries(Object.entries(LEVEL_DESC).map(([k, v]) => [k, v.split(":")[0]]));
-const MAINS = ["A1", "A2", "B1", "B2", "C1", "C2"];
-const main = (lv) => (lv === "A0" ? "A1" : String(lv).slice(0, 2));
-const firstStep = (m) => LEVELS.find((lv) => main(lv) === m);
+// The learner picks one of four plain answers (A1 to B2). Vogi moves the level from their texts,
+// up to C2.
+const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
+const LEVEL_WORDS = { A1: "Just starting", A2: "Simple things", B1: "Everyday things", B2: "Quite good", C1: "Fluent", C2: "Near native" };
+const main = (lv) => (lv === "A0" ? "A1" : String(lv).slice(0, 2)); // also maps steps saved before 02.11, like A2.1
 const MODE_WORDS = { grammar: "Grammar only", words: "Better words", natural: "Sound natural" };
 
 function el(tag, attrs = {}, ...kids) {
@@ -77,40 +69,39 @@ function back() { show(nav.pop() || "home", false); }
 
 // Level: asked once in plain words, kept in this browser, shown as a chip.
 function setLevel(lv) {
-  if (!LEVELS.includes(lv) && MAINS.concat("A0").includes(lv)) lv = firstStep(main(lv)); // levels saved before 31.10
+  lv = main(lv || "");
   if (!LEVELS.includes(lv)) return;
   state.level = lv; store(LEVEL_KEY, lv);
   $("level-chip").replaceChildren(el("span", { class: "lvw" }, "Level: "), el("b", {}, el("span", { class: "lvw" }, `${LEVEL_WORDS[lv]} `), `(${lv})`), " ", el("u", {}, "change"));
   $("level-chip").classList.remove("hidden");
 }
-function showSlider(i) {
-  const lv = LEVELS[i];
-  $("lv-code").textContent = lv; $("lv-desc").textContent = LEVEL_DESC[lv];
-  $("lv-range").setAttribute("aria-valuetext", `${lv}, ${LEVEL_DESC[lv]}`);
-}
 function askLevel() {
-  const i = Math.max(0, LEVELS.indexOf(state.level || "A2.1"));
-  $("lv-range").value = i; showSlider(i); show("level");
+  const now = ["C1", "C2"].includes(state.level) ? "B2" : state.level;
+  document.querySelectorAll("[data-level]").forEach((b) => b.classList.toggle("picked", b.dataset.level === now));
+  show("level");
 }
-function estimates() { try { return JSON.parse(stored(EST_KEY) || "[]").filter((x) => MAINS.includes(main(x))); } catch { return []; } }
+function estimates() { try { return JSON.parse(stored(EST_KEY) || "[]").filter((x) => LEVELS.includes(main(x))); } catch { return []; } }
+// Three texts in a row above (or below) the level: Vogi switches by itself and says so, with an undo.
 function noteEstimate(lv) {
   $("suggest").classList.add("hidden");
-  if (!MAINS.includes(main(lv || ""))) return;
+  if (!LEVELS.includes(main(lv || ""))) return;
   const list = estimates().concat(lv).slice(-5);
   store(EST_KEY, JSON.stringify(list));
   const last = list.slice(-3);
   if (last.length < 3) return;
-  const me = MAINS.indexOf(main(state.level)), idx = last.map((x) => MAINS.indexOf(main(x)));
+  const me = LEVELS.indexOf(state.level), idx = last.map((x) => LEVELS.indexOf(main(x)));
   const above = idx.every((i) => i > me), below = idx.every((i) => i < me);
   if (!above && !below) return;
   // The gentlest step: the estimate nearest to the learner's level.
-  const nearest = last.map(main).sort((a, b) => Math.abs(MAINS.indexOf(a) - me) - Math.abs(MAINS.indexOf(b) - me))[0];
-  const target = firstStep(nearest);
+  const target = last.map(main).sort((a, b) => Math.abs(LEVELS.indexOf(a) - me) - Math.abs(LEVELS.indexOf(b) - me))[0];
   if (stored(DISMISS_KEY) === target) return;
-  $("suggest-text").textContent = `Your last texts look like ${nearest}. Switch to ${target}?`;
+  const before = state.level;
+  setLevel(target); store(EST_KEY, "[]");
+  $("suggest-text").textContent = `Your last texts look like ${target}, so Vogi now uses ${target}.`;
+  $("suggest-no").textContent = `Keep ${before}`;
   $("suggest").classList.remove("hidden");
-  $("suggest-yes").onclick = () => { setLevel(target); store(EST_KEY, "[]"); $("suggest").classList.add("hidden"); };
-  $("suggest-no").onclick = () => { store(DISMISS_KEY, target); $("suggest").classList.add("hidden"); };
+  $("suggest-yes").onclick = () => $("suggest").classList.add("hidden");
+  $("suggest-no").onclick = () => { setLevel(before); store(DISMISS_KEY, target); $("suggest").classList.add("hidden"); };
 }
 
 // Word-level diff: longest common subsequence over words. Runs of the same kind are grouped.
@@ -906,8 +897,9 @@ function optionsLine() {
 // Wiring
 $("brand").onclick = () => show("home");
 $("level-chip").onclick = askLevel;
-$("lv-range").oninput = () => showSlider(Number($("lv-range").value));
-$("lv-ok").onclick = () => { const first = !state.level; setLevel(LEVELS[Number($("lv-range").value)]); first ? show("home", false) : back(); };
+document.querySelectorAll("[data-level]").forEach((b) => b.onclick = () => {
+  const first = !state.level; setLevel(b.dataset.level); first ? show("home", false) : back();
+});
 document.querySelectorAll("[data-go]").forEach((b) => b.onclick = () => show(b.dataset.go));
 document.querySelectorAll("[data-back]").forEach((b) => b.onclick = back);
 document.querySelectorAll("[data-mode]").forEach((b) => b.onclick = () => {
@@ -952,7 +944,7 @@ optionsLine();
 const savedLevel = stored(LEVEL_KEY);
 setLevel(savedLevel);
 function startPage() {
-  if (state.level) show("home", false); else { $("lv-range").value = 2; showSlider(2); show("level", false); }
+  if (state.level) show("home", false); else show("level", false);
 }
 startPage();
 $("code-go").onclick = async () => {
