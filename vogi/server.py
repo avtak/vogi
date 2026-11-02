@@ -381,14 +381,18 @@ async def live(ws: WebSocket):
         words = [str(w)[:40] for w in cfg.get("keywords", []) if str(w).strip()][:40]
         # endpointing: Muse Voice Transcribe detects when the learner stops talking (hands-free Talk)
         mode = "ENDPOINTING" if cfg.get("mode") == "endpointing" else "PUSH_TO_TALK"
+        # any: the learner describes their own scene in any language; the recogniser detects it
+        any_language = cfg.get("lang") == "any"
     except (asyncio.TimeoutError, ValueError, TypeError, AttributeError, WebSocketDisconnect):
         await ws.close(code=1008)
         return
     handshake = {
         "authorization": {"accessToken": f"Bearer {key}"},
         "audioEncoding": "PCM_24KHZ", "model": "muse-voice-transcribe-1.0", "mode": mode,
-        "languageBias": ["German"], "emitAudioProgress": False,
+        "emitAudioProgress": False,
     }
+    if not any_language:
+        handshake["languageBias"] = ["German"]
     if words:
         handshake["keywords"] = words
     try:

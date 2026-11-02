@@ -516,7 +516,23 @@ function openOwn() {
   $("scene-pick").classList.add("hidden"); $("own").classList.remove("hidden");
   $("own-text").focus();
 }
+// The learner can also tell the situation, in any language: the recogniser detects it.
+async function ownMic() {
+  const b = $("own-mic");
+  if (!rec) {
+    try { startLive({ target: "own-text", lang: "any", keywords: [] }); await startRec(); }
+    catch { finishLive(); status("Vogi cannot use the microphone. Type your situation instead."); return; }
+    b.classList.add("on"); b.textContent = "■ Stop"; status("Listening … tell Vogi your situation, then press Stop.");
+    return;
+  }
+  b.classList.remove("on"); b.textContent = "🎤 Speak";
+  await stopRec();
+  const heard = await finishLive();
+  if (heard) { $("own-text").value = heard; status("Fix any word if needed, then press Make the scene."); }
+  else status("Vogi did not hear anything. Try again, or type it.");
+}
 async function makeOwn() {
+  if (rec) await ownMic();
   const text = $("own-text").value.trim();
   if (text.length < 3 || $("own-go").disabled) return;
   $("own-go").disabled = $("own-again").disabled = true;
@@ -787,13 +803,14 @@ function startLive(opts = {}) {
     live = { ws, ready: false, queue: [], text: "", final: "", error: "", rs: { pos: 0, prev: 0 } };
     const me = live;
     me.done = new Promise((res) => (me.resolve = res));
-    ws.onopen = () => ws.send(JSON.stringify({ keywords: keywordsNow(), mode: opts.mode || "push" }));
+    const box = $(opts.target || "say");
+    ws.onopen = () => ws.send(JSON.stringify({ keywords: opts.keywords || keywordsNow(), mode: opts.mode || "push", lang: opts.lang || "de" }));
     ws.onmessage = (e) => {
       const ev = JSON.parse(e.data);
       if (ev.type === "ready") { me.ready = true; me.queue.forEach((b) => ws.send(b)); me.queue = []; }
       else if (ev.type === "transcript" && ev.transcript) {
         me.text = ev.transcript;
-        if (live === me) $("say").value = [...(me.parts || []), me.text].join(" ");
+        if (live === me) box.value = [...(me.parts || []), me.text].join(" ");
         if (ev.final) me.final = me.text;
       } else if (ev.type === "speechStart") {
         if (me.onSpeechStart) me.onSpeechStart();
@@ -1004,7 +1021,8 @@ $("new-scene").onclick = () => { talk.ended = true; stopListening(); $("talk").c
 $("own-go").onclick = makeOwn;
 $("own-again").onclick = makeOwn;
 $("own-start").onclick = startOwn;
-$("own-cancel").onclick = () => { $("own").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); };
+$("own-mic").onclick = ownMic;
+$("own-cancel").onclick = () => { if (rec) ownMic(); $("own").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); };
 // Time to think: the learner's choice, kept in this browser. Beginners start with more.
 $("wait").value = stored(WAIT_KEY) || (["A1", "A2"].includes(main(state.level || "A2")) ? "1000" : "300");
 $("wait").onchange = () => store(WAIT_KEY, $("wait").value);
