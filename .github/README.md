@@ -31,7 +31,12 @@ work on paper.
    and the partner answers at their level, with "words you can use" under each line. The learner
    chooses how long Vogi waits after they stop. When the talk ends, they check their lines, then
    everything they said gets the same try-first feedback.
-4. **My progress:** the learner's most frequent mistakes, "Practise my top 3", and every checked
+4. **Learn something:** a short lesson on a topic the learner picks: one of four chips, their own topic in any
+   language (typed or spoken), or "From my mistakes". Muse Spark writes 6 to 8 cards that mix short explanations
+   with questions, and Muse Image draws a picture for up to two explanations. The lesson builds itself: a wrong
+   answer gets a second hint, not the answer. "I don't know", or a second wrong answer, shows the answer and the
+   rule, and Vogi adds a new explanation and question right after the card. Wrong answers go to My progress.
+5. **My progress:** the learner's most frequent mistakes, "Practise my top 3", and every checked
    homework page with its marks. All of it stays in the learner's browser.
 
 Technical details (model, cost, Vogi's self-check, the score table) sit in "How Vogi works" at the
@@ -56,6 +61,7 @@ language app, Sprachvogel.
 | Talk | `vogi/scenes.py`, `/api/talk`, `/api/live` | The page streams the microphone (24 kHz PCM) to Vogi's server, which relays it to Muse Voice Transcribe's realtime socket, so the API key never reaches the browser. Endpointing marks the end of each sentence, and a short pause to think joins the same line. The partner runs at `reasoning_effort="minimal"` (about 2 s a turn) and never corrects mid-talk |
 | Own scenes | `/api/scene`, `/api/scene-picture` | Muse Spark turns the learner's description into a scene (partner, setting, words, goals) in the same strict format as the built-in ones; Muse Image draws it. The scene and its picture stay in the learner's browser |
 | Scene pictures | `/api/scene-image/{scene}` | Muse Image draws each everyday scene, with no text in the picture, so the learner sees where they are before they speak |
+| Learn something | `vogi/schema.py` (`Lesson`, `Step`, `LessonTurn`), `/api/lesson`, `/api/lesson/answer`, `/api/lesson/picture` | The model writes the lesson as cards, and the page adds cards as the learner answers. Code checks each exact answer first. Explanations and added steps are checked so they never give an answer away |
 | Memory | `vogi/static/vogi.js` | Mistakes and checked pages are kept in the browser (localStorage, IndexedDB). No accounts, no server storage |
 | Test set and score | `eval/` | 56 German sentences with known errors (or none) and a scorer that runs the same set on any model |
 | Hosting | `Dockerfile`, `docs/DEPLOY.md` | An access code and per-visitor and daily limits protect the credits on the public demo |
@@ -64,9 +70,9 @@ language app, Sprachvogel.
 
 | Model | Where | Used for |
 |---|---|---|
-| `muse-spark-1.3` | Meta Model API | Correction, reading handwriting, locating mistakes on the photo, level estimate, exercises, judging answers, the role-play partner |
+| `muse-spark-1.3` | Meta Model API | Correction, reading handwriting, locating mistakes on the photo, level estimate, exercises, judging answers, the role-play partner, the lesson plan and its answers |
 | `muse-voice-transcribe-1.0` | Meta Model API (realtime socket; file upload as fallback) | Writing down what the learner says, mistakes included |
-| `muse-image-1.0` | Meta Model API | One picture per Talk scene. Muse Image made the five in `vogi/static/scenes/` with `core.scene_image` on 31.10.2026, and the server makes any missing one at start |
+| `muse-image-1.0` | Meta Model API | One picture per Talk scene, and up to two per lesson. Muse Image made the five in `vogi/static/scenes/` with `core.scene_image` on 31.10.2026, and the server makes any missing one at start |
 | Muse Spark Open | Partner hosts (Baseten, Fireworks, Together) | The same correction behind the same format, ready to score on the same test set once a partner key is available |
 
 The partner's voice in Talk is the browser's built-in text-to-speech, because the Model API has no

@@ -24,7 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ValidationError
 
 from . import core, providers, scenes
-from .schema import Edit, Exercise, Level, Mode
+from .schema import Edit, Exercise, Level, Mode, Step
 
 STATIC = Path(__file__).parent / "static"
 RESULTS = Path(__file__).parent.parent / "eval" / "results"
@@ -45,7 +45,8 @@ ACCESS_CODE = os.environ.get("VOGI_ACCESS_CODE", "")
 HOURLY_PER_VISITOR = int(os.environ.get("VOGI_HOURLY_LIMIT", "60"))
 DAILY_TOTAL = int(os.environ.get("VOGI_DAILY_LIMIT", "400"))  # about $2 to $5 a day at most
 MODEL_PATHS = {"/api/correct", "/api/read", "/api/locate", "/api/exercises", "/api/check", "/api/talk",
-               "/api/transcribe", "/api/live", "/api/scene", "/api/scene-picture"}
+               "/api/transcribe", "/api/live", "/api/scene", "/api/scene-picture",
+               "/api/lesson", "/api/lesson/answer", "/api/lesson/picture"}
 _visits: dict[str, deque] = defaultdict(deque)
 _day = {"date": "", "count": 0}
 _tries: dict[str, deque] = defaultdict(deque)
@@ -169,6 +170,36 @@ class CheckIn(BaseModel):
     exercise: Exercise
     answer: str = Field(max_length=500)
     provider: str | None = None
+
+
+class LessonMistake(BaseModel):
+    """One of the learner's saved mistakes, sent with a lesson on "From my mistakes"."""
+    original: str = Field(max_length=500)
+    replacement: str = Field(max_length=500)
+    category: str = Field(max_length=40)
+    rule: str = Field(max_length=300)
+
+
+class LessonIn(BaseModel):
+    topic: str = Field(min_length=1, max_length=300)
+    level: Level = "A2"
+    mistakes: list[LessonMistake] = Field(default_factory=list, max_length=12)
+    provider: str | None = None
+
+
+class LessonAnswerIn(BaseModel):
+    title: str = Field(max_length=120)
+    level: Level = "A2"
+    step: Step
+    answer: str = Field(default="", max_length=500)
+    tries: int = Field(default=1, ge=0, le=10)
+    dont_know: bool = False
+    recent: list[str] = Field(default_factory=list, max_length=6)
+    provider: str | None = None
+
+
+class LessonPictureIn(BaseModel):
+    description: str = Field(min_length=3, max_length=300)
 
 
 def _provider(pid: str | None) -> providers.Provider:
@@ -445,6 +476,28 @@ async def live(ws: WebSocket):
             await ws.close()
         except RuntimeError:
             pass
+
+
+@app.post("/api/lesson")
+def lesson(body: LessonIn):
+    mistakes = [m.model_dump() for m in body.mistakes]
+    out = _run(core.lesson, _provider(body.provider), body.topic.strip(), body.level, mistakes)
+    if not out["result"]["steps"]:
+        raise HTTPException(502, "Vogi could not write a lesson on this topic. Try another one.")
+    return out
+
+
+@app.post("/api/lesson/answer")
+def lesson_answer(body: LessonAnswerIn):
+    return _run(core.lesson_turn, _provider(body.provider), body.title.strip(), body.level, body.step.model_dump(),
+                body.answer.strip(), body.tries, body.dont_know, [r[:120] for r in body.recent])
+
+
+@app.post("/api/lesson/picture")
+def lesson_picture(body: LessonPictureIn):
+    if not os.environ.get("MODEL_API_KEY"):
+        raise HTTPException(400, "Pictures need the Meta Model API.")
+    return {"image": _run(core.lesson_picture, providers.get("meta"), body.description.strip())}
 
 
 @app.post("/api/exercises")

@@ -20,7 +20,7 @@ from pydantic import BaseModel, ValidationError
 
 from . import prompts
 from .providers import Provider, client
-from .schema import Correction, Exercises, Marks, PartnerTurn, Reading, Scene, Verdict, json_schema
+from .schema import Correction, Exercises, Lesson, LessonTurn, Marks, PartnerTurn, Reading, Scene, Verdict, json_schema
 
 T = TypeVar("T", bound=BaseModel)
 log = logging.getLogger("vogi")
@@ -205,16 +205,22 @@ def transcribe(wav: bytes, keywords: list[str] | None = None) -> dict:
             "ms": round((time.perf_counter() - started) * 1000), "model": "muse-voice-transcribe-1.0"}
 
 
-def scene_image(p: Provider, scene: dict) -> bytes:
-    """A picture of the Talk scene from Muse Image (dev.meta.ai/docs/image-generation, $0.01 each)."""
-    prompt = (
-        "A warm, friendly flat illustration of an everyday scene in Germany, seen from the point of view of "
-        f"the person who walks in. Scene: {scene['setting']} The other person: {scene['partner']} "
-        "Soft colours, simple shapes, calm mood. No text, no letters, no words on signs."
-    )
+def picture(p: Provider, description: str) -> bytes:
+    """One picture from Muse Image (dev.meta.ai/docs/image-generation, $0.01 each).
+
+    The style and the no-text rule are the same for every picture Vogi draws: a Talk scene,
+    or the idea of a lesson step.
+    """
+    prompt = f"A warm, friendly flat illustration. {description} Soft colours, simple shapes, calm mood. No text, no letters, no words on signs."
     r = client(p).images.generate(model="muse-image-1.0", prompt=prompt, n=1, size="1792x1024",
                                   response_format="b64_json", extra_body={"output_format": "webp"})
     return base64.b64decode(r.data[0].b64_json)
+
+
+def scene_image(p: Provider, scene: dict) -> bytes:
+    """A picture of the Talk scene (the built-in and the learner's own scenes)."""
+    return picture(p, f"An everyday scene in Germany, seen from the point of view of the person who walks in. "
+                      f"Scene: {scene['setting']} The other person: {scene['partner']}")
 
 
 def make_scene(p: Provider, description: str, level: str) -> dict:
@@ -225,13 +231,22 @@ def make_scene(p: Provider, description: str, level: str) -> dict:
     return {"result": scene, "meta": meta}
 
 
-def scene_thumbnail(p: Provider, scene: dict) -> str:
-    """A small picture for a learner's own scene, as a data URL the browser keeps (about 40 kB)."""
-    im = Image.open(io.BytesIO(scene_image(p, scene)))
+def thumbnail(image: bytes) -> str:
+    """A small picture as a data URL the browser keeps (about 40 kB)."""
+    im = Image.open(io.BytesIO(image))
     im.thumbnail((768, 768))
     buf = io.BytesIO()
     im.save(buf, "WEBP", quality=70)
     return "data:image/webp;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def scene_thumbnail(p: Provider, scene: dict) -> str:
+    return thumbnail(scene_image(p, scene))
+
+
+def lesson_picture(p: Provider, description: str) -> str:
+    """A picture for a lesson step, as a small data URL."""
+    return thumbnail(picture(p, description))
 
 
 def exercises(p: Provider, level: str, edits: list[dict]) -> dict:
@@ -315,3 +330,118 @@ def verify(text: str, c: Correction, mode: str) -> dict:
         "change_ratio": round(change_ratio, 3),
         "warnings": warnings,
     }
+
+
+# Learn something. The plan and each answer come from the model; Vogi checks them with code first.
+LESSON_MAX_STEPS = 8    # the plan
+LESSON_MAX_PICTURES = 2  # per lesson
+QTYPES = ("fill_gap", "choose", "fix_sentence", "write", "speak", "photo")
+
+
+def _blank() -> dict:
+    return {"kind": "", "text": "", "examples": [], "picture": "", "qtype": "", "prompt": "", "options": [],
+            "answer": "", "hint": "", "rule": "", "category": ""}
+
+
+def clean_steps(steps: list[dict], limit: int) -> list[dict]:
+    """Keep the well-formed steps, each with only the fields its kind uses (the rest stay "" or [])."""
+    out = []
+    for s in steps:
+        if s["kind"] == "explain":
+            text = s["text"].strip()[:400]
+            examples = [x.strip()[:200] for x in s["examples"] if x.strip()][:3]
+            if not text and not examples:
+                continue
+            out.append({**_blank(), "kind": "explain", "text": text, "examples": examples,
+                        "picture": s["picture"].strip()[:300], "rule": s["rule"].strip()[:250],
+                        "category": s["category"]})
+            continue
+        prompt, answer, qtype = s["prompt"].strip()[:300], s["answer"].strip()[:300], s["qtype"]
+        if qtype not in QTYPES or not prompt or not answer:
+            continue
+        options = [o.strip()[:80] for o in s["options"] if o.strip()][:4] if qtype == "choose" else []
+        if qtype == "choose" and (len(options) < 2 or _norm(answer) not in [_norm(o) for o in options]):
+            continue
+        hint = s["hint"].strip()[:200]
+        # The hint is the first nudge the learner sees: it must not hand over the answer. Naming one word of a
+        # longer answer ("mit" in "mit meinem Bruder") is still a fair hint, so all new words must appear.
+        if not hint or _spoils(hint, answer, prompt):
+            hint = "Think about the rule."
+        out.append({**_blank(), "kind": "question", "text": s["text"].strip()[:300] or "Answer the question.",
+                    "qtype": qtype, "prompt": prompt, "options": options, "answer": answer, "hint": hint,
+                    "rule": s["rule"].strip()[:250], "category": s["category"]})
+    return out[:limit]
+
+
+def _guard_explains(steps: list[dict]) -> list[dict]:
+    """An explanation must not give away the answer of a question that comes after it.
+
+    Examples that do are dropped; an explanation whose text gives it away is dropped as a whole.
+    """
+    out = []
+    for i, s in enumerate(steps):
+        if s["kind"] == "explain":
+            later = [t["answer"] for t in steps[i + 1:] if t["kind"] == "question"]
+            # all words of an answer must appear: one common word like "mit" does not give an answer away
+            if any(_spoils(s["text"], a) for a in later):
+                continue
+            s = {**s, "examples": [x for x in s["examples"] if not any(_spoils(x, a) for a in later)]}
+            if not s["text"] and not s["examples"]:
+                continue
+        out.append(s)
+    return out
+
+
+def guard_feedback(feedback: str, step: dict, answer: str) -> str:
+    """The learner tries again, so a hint must not hand over the answer. A spoiling one becomes the step's own hint."""
+    if _spoils(feedback, step["answer"], answer, any_word=True):
+        return step["hint"] or "Not yet. Read the hint again and try once more."
+    return feedback
+
+
+LESSON_MIN_STEPS = 5  # fewer than this after the checks: one more try
+
+
+def _plan(result: Lesson) -> list[dict]:
+    return _guard_explains(clean_steps([s.model_dump() for s in result.steps], limit=LESSON_MAX_STEPS))
+
+
+def lesson(p: Provider, topic: str, level: str, mistakes: list[dict]) -> dict:
+    # low reasoning for the plan: the steps are short, and the spoiler checks below do the rest
+    messages = prompts.lesson_messages(topic, level, mistakes)
+    result, meta = ask(p, messages, Lesson, effort="low")
+    steps = _plan(result)
+    if len(steps) < LESSON_MIN_STEPS:
+        # the explanations gave answers away, so the checks cut too many steps: the model writes it again
+        result, again = ask(p, messages + [{"role": "user", "content": prompts.LESSON_RETRY}], Lesson, effort="low")
+        if len(_plan(result)) > len(steps):
+            steps = _plan(result)
+        meta = {**again, "ms": meta["ms"] + again["ms"], "tokens_in": meta["tokens_in"] + again["tokens_in"],
+                "tokens_out": meta["tokens_out"] + again["tokens_out"], "attempts": 2,
+                "usd_estimate": round(meta["usd_estimate"] + again["usd_estimate"], 5) if again["usd_estimate"] else None}
+    pictures = 0
+    for s in steps:
+        if s["picture"] and pictures < LESSON_MAX_PICTURES:
+            pictures += 1
+        else:
+            s["picture"] = ""
+    title = result.title.strip()[:80] or topic[:80]
+    return {"result": {"title": title, "steps": steps}, "meta": meta}
+
+
+def lesson_turn(p: Provider, title: str, level: str, step: dict, answer: str, tries: int, dont_know: bool,
+                recent: list[str]) -> dict:
+    """Check one answer. `tries` counts this attempt; from the second wrong one Vogi adds steps and the page reveals."""
+    if not dont_know and _norm(answer) == _norm(step["answer"]):
+        return {"result": {"correct": True, "feedback": "Right!", "add_steps": []}, "judged_by": "exact match",
+                "meta": None}
+    messages = prompts.lesson_turn_messages(title, level, step, answer, tries, dont_know, recent)
+    turn, meta = ask(p, messages, LessonTurn, effort="minimal")
+    correct = turn.correct and not dont_know
+    feedback = turn.feedback.strip() or ("Right!" if correct else "Not yet. Read the hint again.")
+    if not correct:
+        feedback = guard_feedback(feedback, step, answer)
+    remedial = dont_know or (not correct and tries >= 2)
+    adds = _guard_explains(clean_steps([s.model_dump() for s in turn.add_steps], limit=3)) if remedial else []
+    return {"result": {"correct": correct, "feedback": feedback, "add_steps": adds}, "judged_by": p.model,
+            "meta": meta}

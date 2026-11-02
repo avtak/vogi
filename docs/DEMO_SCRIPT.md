@@ -30,6 +30,16 @@ every model wait out of the video, or speak over it.
 | 2:30–2:50 | Open "How Vogi works": the self-check line and the score table | | "Before I see an answer, Vogi checks it with its own code. On 56 test sentences I wrote, Muse Spark fixed every error, left every correct sentence alone, and answered in about one and a half seconds." |
 | 2:50–3:00 | `git log` in a terminal, then the GitHub page | | "Everything was built during the hackathon, starting on 31 October. Next, Vogi goes into my language app, Sprachvogel." |
 
+## Clip 7 (about 20 s): Learn something
+
+Film it after the Talk part, as a separate clip. Start on the home screen.
+
+| Time | Screen | Caption | Say |
+|---|---|---|---|
+| 0:00–0:20 | Home: Learn something, the chip "Dativ after mit". The explanation card with its picture, Next, a wrong answer and its second hint, then "I don't know" and the card Vogi added | Muse Spark 1.3 · builds the lesson · Muse Image · pictures | "Learn something builds the lesson as I answer. Muse Spark writes the steps, and Muse Image draws the picture. A wrong answer gets a second hint. If I do not know, Vogi adds a new question right after this card." |
+
+Cut the model waits. The lesson plan takes about 12 s and each answer 2 to 5 s.
+
 ## If something goes wrong while recording
 
 - The model answers a little differently each time. If a take shows a different mistake, keep

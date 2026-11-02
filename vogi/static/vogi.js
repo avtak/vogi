@@ -62,6 +62,7 @@ function show(name, push = true) {
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("hidden", v.id !== "v-" + name));
   window.scrollTo({ top: 0 });
   if (name === "home") { nav.length = 0; renderProgressLine(); }
+  if (name === "lesson-pick") $("chip-mistakes").classList.toggle("hidden", !loadMemory().length);
   if (name === "talk" && (talk.ended || !talk.scene)) { $("talk").classList.add("hidden"); $("own").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); }
   if (name !== "talk" && typeof rec !== "undefined" && rec && talk.scene) { talk.handsFree = false; stopListening(); }
 }
@@ -517,18 +518,21 @@ function openOwn() {
   $("own-text").focus();
 }
 // The learner can also tell the situation, in any language: the recogniser detects it.
-async function ownMic() {
-  const b = $("own-mic");
+const ownMic = () => dictate($("own-mic"), $("own-text"), ownMic, "Fix any word if needed, then press Make the scene.", "any");
+// Dictation into a text box: the words appear while the learner speaks, Stop keeps them in the box.
+// The own scene, the lesson topic and a spoken lesson answer all use it.
+async function dictate(b, box, again, done, lang) {
+  const idle = b.dataset.idle || (b.dataset.idle = b.textContent);
   if (!rec) {
-    try { startLive({ target: "own-text", lang: "any", keywords: [] }); await startRec(ownMic); }
-    catch { finishLive(); status("Vogi cannot use the microphone. Type your situation instead."); return; }
-    b.classList.add("on"); b.textContent = "■ Stop"; status("Listening … tell Vogi your situation, then press Stop.");
+    try { startLive({ box, lang, keywords: [] }); await startRec(again); }
+    catch { finishLive(); status("Vogi cannot use the microphone. Type it instead."); return; }
+    b.classList.add("on"); b.textContent = "■ Stop"; status("Listening … say it, then press Stop.");
     return;
   }
-  b.classList.remove("on"); b.textContent = "🎤 Speak";
+  b.classList.remove("on"); b.textContent = idle;
   await stopRec();
   const heard = await finishLive();
-  if (heard) { $("own-text").value = heard; status("Fix any word if needed, then press Make the scene."); }
+  if (heard) { box.value = heard; status(done); }
   else status("Vogi did not hear anything. Try again, or type it.");
 }
 async function makeOwn() {
@@ -812,7 +816,7 @@ function startLive(opts = {}) {
     live = { ws, ready: false, queue: [], text: "", final: "", error: "", rs: { pos: 0, prev: 0 } };
     const me = live;
     me.done = new Promise((res) => (me.resolve = res));
-    const box = $(opts.target || "say");
+    const box = opts.box || $(opts.target || "say");
     ws.onopen = () => ws.send(JSON.stringify({ keywords: opts.keywords || keywordsNow(), mode: opts.mode || "push", lang: opts.lang || "de" }));
     ws.onmessage = (e) => {
       const ev = JSON.parse(e.data);
@@ -987,6 +991,237 @@ function optionsLine() {
   $("options-line").textContent = MODE_WORDS[picked("mode")] + ($("tryfirst").checked ? " · I fix my mistakes first" : " · show me the answer");
 }
 
+// Learn something: a short lesson that builds itself. Muse Spark writes the plan and checks each
+// answer; an exact match is checked by Vogi at once. Pictures come from Muse Image in the background.
+const LESSON_MAX = 14; // a lesson never grows past this many cards
+const LESSON_PICTURES = 2; // per lesson, as the plan asks
+const STEP_KEYS = ["kind", "text", "examples", "picture", "qtype", "prompt", "options", "answer", "hint", "rule", "category"];
+const stepBody = (s) => Object.fromEntries(STEP_KEYS.map((k) => [k, s[k]]));
+const lesson = { token: 0, title: "", steps: [], cur: 0, pictures: 0, right: 0, wrong: [], busy: false };
+const lessonMic = () => dictate($("lesson-mic"), $("lesson-topic"), lessonMic, "Check the topic, then press Start the lesson.", "any");
+
+async function startLesson(topic, mistakes = []) {
+  if (lesson.busy) return; // a double click builds one lesson
+  if (!topic) { status("Type a topic first."); return; }
+  lesson.busy = true; status("Vogi is writing your lesson …");
+  try {
+    const data = await api("/api/lesson", { topic, level: state.level, mistakes, provider: provider() });
+    buildLesson(data.result);
+    status(""); show("lesson");
+  } catch (e) { status(e.message); } finally { lesson.busy = false; }
+}
+function startFromMistakes() {
+  const list = loadMemory().slice(-12).map(({ original, replacement, category, rule }) =>
+    ({ original: original ?? "", replacement: replacement ?? "", category: category || "other", rule: rule ?? "" }));
+  if (!list.length) { status("No mistakes saved yet. Check a text first."); return; }
+  startLesson("My mistakes: the rules I keep getting wrong", list);
+}
+
+function buildLesson(r) {
+  lesson.token++; // answers and pictures of the old lesson are ignored from now on
+  Object.assign(lesson, { title: r.title, steps: [], cur: 0, pictures: 0, right: 0, wrong: [] });
+  $("lesson-title").textContent = r.title;
+  $("lesson-cards").replaceChildren();
+  $("lesson-end").classList.add("hidden");
+  r.steps.forEach((s, k) => insertStep(s, k, false));
+  showStep(0);
+}
+
+// One card, kept in the lesson at index k. Cards after the current one stay hidden until their turn.
+function insertStep(s, k, added) {
+  const st = { ...s, added, done: false, tries: 0, firstWrong: "", busy: false, picUrl: "" };
+  if (st.kind === "explain" && st.picture && lesson.pictures < LESSON_PICTURES) lesson.pictures++;
+  else st.picture = "";
+  st.el = st.kind === "explain" ? explainCard(st) : questionCard(st);
+  st.el.classList.add("hidden");
+  lesson.steps.splice(k, 0, st);
+  const next = lesson.steps[k + 1];
+  if (next) next.el.before(st.el); else $("lesson-cards").append(st.el);
+  if (st.picture) startPicture(st);
+  return st;
+}
+// New steps from the model go right after the current card.
+function insertAfter(steps) {
+  let k = lesson.cur + 1;
+  for (const s of (steps || []).slice(0, Math.max(0, LESSON_MAX - lesson.steps.length))) insertStep(s, k++, true);
+}
+
+function showStep(k) {
+  lesson.cur = k;
+  const st = lesson.steps[k];
+  lesson.steps.forEach((s) => s.el.classList.toggle("active", s === st));
+  if (!st) return finishLesson();
+  st.el.classList.remove("hidden");
+  attachPicture(st);
+  st.el.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (st.focusEl) st.focusEl.focus({ preventScroll: true });
+}
+function finishLesson() {
+  const questions = lesson.steps.filter((s) => s.kind === "question").length;
+  $("lesson-score").textContent = questions ? `You got ${lesson.right} of ${questions} right the first time.` : "Lesson done.";
+  $("lesson-practise").classList.toggle("hidden", !lesson.wrong.length);
+  $("lesson-end").classList.remove("hidden");
+  $("lesson-end").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function nextAfter(st) { if (lesson.steps[lesson.cur] === st) showStep(lesson.cur + 1); }
+function closeCard(st) {
+  st.el.classList.add("done"); st.el.classList.remove("active");
+  lockQuestion(st, true);
+}
+function lockQuestion(st, on) {
+  if (st.kind === "question") st.el.querySelectorAll("button, input, textarea").forEach((x) => (x.disabled = on || st.done));
+}
+
+// Pictures: asked for as soon as the plan arrives. One goes on its card when it is ready,
+// but never onto a card that is already done.
+function startPicture(st) {
+  const token = lesson.token;
+  api("/api/lesson/picture", { description: st.picture })
+    .then((d) => { if (token === lesson.token) { st.picUrl = d.image; attachPicture(st); } })
+    .catch(() => { /* no picture: the lesson goes on without it */ });
+}
+function attachPicture(st) {
+  if (!st.pic || st.done || !st.picUrl || st.pic.hasAttribute("src")) return;
+  st.pic.src = st.picUrl; st.pic.classList.remove("hidden");
+}
+
+function explainCard(st) {
+  const head = el("div", { class: "lhead" }, el("span", { class: "tag" }, "Vogi explains"));
+  if (st.added) head.append(el("span", { class: "added" }, "Vogi added this for you"));
+  st.pic = el("img", { class: "lpic hidden", alt: st.picture });
+  const list = el("ul", { class: "examples" });
+  for (const e of st.examples) {
+    const b = el("button", { class: "again", title: "Read aloud", "aria-label": "Read aloud" }, "🔊");
+    b.onclick = () => speak(e, true);
+    list.append(el("li", {}, e, " ", b));
+  }
+  st.next = el("button", { class: "btn primary" }, "Next");
+  st.next.onclick = () => finishExplain(st);
+  st.focusEl = st.next;
+  return el("article", { class: "lcard explain" }, head, el("p", {}, st.text), st.pic, list, el("div", { class: "acts" }, st.next));
+}
+function finishExplain(st) {
+  if (st.done) return; // a double click on Next moves on once
+  st.done = true;
+  st.next.classList.add("hidden");
+  closeCard(st);
+  nextAfter(st);
+}
+
+function questionCard(st) {
+  const head = el("div", { class: "lhead" }, el("span", { class: "tag" }, "Question"), el("span", { class: "chip" }, CAT[st.category] || "other"));
+  if (st.added) head.append(el("span", { class: "added" }, "Vogi added this for you"));
+  const fb = el("div", { class: "fb" }), rev = el("div", { class: "reveal hidden" });
+  const check = el("button", { class: "btn primary" }, "Check"), dk = el("button", { class: "link" }, "I don't know");
+  const acts = el("div", { class: "acts" }, check, dk);
+  const parts = [head, el("p", { class: "note" }, st.text), el("div", { class: "task" }, st.prompt), el("p", { class: "note" }, "Hint: " + st.hint)];
+  if (st.qtype === "choose") {
+    const opts = el("div", { class: "opts-row" });
+    for (const o of st.options) {
+      const b = el("button", { class: "opt", type: "button", "aria-pressed": "false" }, o);
+      b.onclick = () => { st.picked = o; opts.querySelectorAll(".opt").forEach((x) => x.setAttribute("aria-pressed", String(x === b))); };
+      opts.append(b);
+    }
+    st.value = () => st.picked || "";
+    st.focusEl = opts.querySelector("button");
+    parts.push(opts);
+  } else {
+    // fill_gap and fix_sentence are one line; write, speak and photo are a few words.
+    const input = ["fill_gap", "fix_sentence"].includes(st.qtype)
+      ? el("input", { type: "text", autocomplete: "off", spellcheck: "false", "aria-label": "Your answer" })
+      : el("textarea", { rows: "3", "aria-label": "Your answer" });
+    input.onkeydown = (e) => { if (e.key === "Enter" && input.tagName === "INPUT") { e.preventDefault(); check.click(); } };
+    st.input = input; st.value = () => input.value; st.focusEl = input;
+    parts.push(input);
+    if (st.qtype === "speak") {
+      const mic = el("button", { class: "btn" }, "🎤 Answer aloud");
+      const speakMic = () => dictate(mic, input, speakMic, "Check the words, then press Check.", "de");
+      mic.onclick = speakMic;
+      acts.append(mic);
+    }
+    if (st.qtype === "photo") {
+      const file = el("input", { type: "file", accept: "image/jpeg,image/png,image/webp", capture: "environment", class: "hidden" });
+      const cam = el("button", { class: "btn" }, "📷 Photo of my answer");
+      cam.onclick = () => file.click();
+      file.onchange = () => readAnswerPhoto(st, file.files[0]);
+      acts.append(cam);
+      parts.push(file);
+    }
+  }
+  check.onclick = () => answerStep(st, false);
+  dk.onclick = () => answerStep(st, true);
+  parts.push(acts, fb, rev);
+  st.fb = fb; st.rev = rev;
+  return el("article", { class: "lcard question" }, ...parts);
+}
+
+// Photo of a handwritten answer: Muse Spark reads it into the box, and the learner checks it before Check.
+async function readAnswerPhoto(st, file) {
+  if (!file || st.busy || st.done) return;
+  st.busy = true; lockQuestion(st, true);
+  st.fb.className = "fb"; st.fb.textContent = "Vogi is reading your handwriting …";
+  const form = new FormData(); form.append("image", file);
+  if (provider()) form.append("provider", provider());
+  try {
+    const data = await api("/api/read", form, true);
+    st.input.value = data.result.text;
+    st.fb.textContent = "Vogi read this from your photo. Fix any word it misread, then press Check.";
+  } catch (e) { st.fb.textContent = e.message; }
+  finally { st.busy = false; lockQuestion(st, false); }
+}
+
+// One answer. Muse Spark checks it (an exact match is checked at once) and writes the next hint.
+// Dont-know, or a second wrong answer, reveals the answer and may add steps on the same point.
+async function answerStep(st, dontKnow) {
+  if (st.done || st.busy) return;
+  const answer = dontKnow ? "" : st.value().trim();
+  if (!dontKnow && !answer) {
+    st.fb.className = "fb no";
+    st.fb.textContent = st.qtype === "choose" ? "Pick one answer first." : "Write an answer first.";
+    return;
+  }
+  st.busy = true; lockQuestion(st, true); st.fb.className = "fb"; st.fb.textContent = "…";
+  const token = lesson.token;
+  try {
+    const { result: v } = await api("/api/lesson/answer", { title: lesson.title, level: state.level, step: stepBody(st), answer,
+      tries: st.tries + 1, dont_know: dontKnow, recent: recentSteps(), provider: provider() });
+    if (token !== lesson.token) return;
+    if (v.correct) return closeQuestion(st, true, "✓ " + v.feedback);
+    if (!st.firstWrong) st.firstWrong = dontKnow ? "(I did not know)" : answer;
+    st.tries++;
+    if (dontKnow || st.tries >= 2) {
+      insertAfter(v.add_steps);
+      return closeQuestion(st, false, dontKnow ? v.feedback : "That was not right. Here is the answer.");
+    }
+    st.fb.className = "fb no"; st.fb.textContent = "Not yet. " + v.feedback;
+  } catch (e) { st.fb.className = "fb no"; st.fb.textContent = e.message; }
+  finally { st.busy = false; lockQuestion(st, false); }
+}
+
+// The card is done. A first-try right answer counts; any other answer goes into My progress.
+function closeQuestion(st, right, msg) {
+  st.done = true;
+  if (right && st.tries === 0) lesson.right++;
+  else {
+    const item = { category: st.category || "other", original: st.firstWrong, replacement: st.answer, hint: st.hint, rule: st.rule };
+    lesson.wrong.push(item);
+    saveMemory(loadMemory().concat([{ t: new Date().toISOString(), level: state.level, ...item }]));
+    renderMemory();
+  }
+  closeCard(st);
+  st.fb.className = "fb " + (right ? "ok" : "no"); st.fb.textContent = msg;
+  st.rev.classList.remove("hidden");
+  st.rev.replaceChildren(...(right ? [] : [el("span", {}, "The answer: "), el("b", {}, st.answer), el("br")]),
+    st.rule ? el("span", { class: "rule" }, st.rule) : "");
+  nextAfter(st);
+}
+
+// What came before, for the model: short, and never the answers.
+function recentSteps() {
+  return lesson.steps.slice(0, lesson.cur).slice(-4)
+    .map((s) => (s.kind === "explain" ? `Explained: ${s.text}` : `Asked: ${s.text} ${s.prompt}`).slice(0, 120));
+}
+
 // Wiring
 $("brand").onclick = () => show("home");
 $("level-chip").onclick = askLevel;
@@ -1031,6 +1266,13 @@ $("own-go").onclick = makeOwn;
 $("own-again").onclick = makeOwn;
 $("own-start").onclick = startOwn;
 $("own-mic").onclick = ownMic;
+document.querySelectorAll(".chip-topic[data-topic]").forEach((b) => b.onclick = () => startLesson(b.dataset.topic));
+$("chip-mistakes").onclick = startFromMistakes;
+$("lesson-go").onclick = () => startLesson($("lesson-topic").value.trim());
+$("lesson-topic").onkeydown = (e) => { if (e.key === "Enter") $("lesson-go").click(); };
+$("lesson-mic").onclick = lessonMic;
+$("lesson-practise").onclick = () => runPractice(lesson.wrong.map((w) => ({ ...w, severity: "error", hint: w.hint || "" })));
+$("lesson-again").onclick = () => { nav.length = 0; nav.push("home"); show("lesson-pick", false); };
 $("own-cancel").onclick = () => { if (rec) ownMic(); $("own").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); };
 // Time to think: the learner's choice, kept in this browser. Beginners start with more.
 $("wait").value = stored(WAIT_KEY) || (["A1", "A2"].includes(main(state.level || "A2")) ? "1000" : "300");

@@ -6,7 +6,7 @@ The same models give the JSON schema sent to the model and validate what comes b
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -113,6 +113,68 @@ class Scene(Strict):
 class Verdict(Strict):
     correct: bool
     feedback: str = Field(description="One short sentence in simple English.")
+
+
+# Learn something: a short lesson the learner answers one step at a time. One Step model covers
+# both kinds, so the schema stays flat: the fields a kind does not use are "" or [].
+# The category of a step may also be "" (an explanation with no grammar point).
+LessonCategory = Literal["", *get_args(Category)]
+QType = Literal["fill_gap", "choose", "fix_sentence", "write", "speak", "photo"]
+
+
+# One step of a lesson: an explanation, or one question.
+class Step(Strict):
+    kind: Literal["explain", "question"] = Field(
+        description="explain: teaches one point. question: one task for the learner."
+    )
+    text: str = Field(
+        description="explain: 1 to 3 short sentences that explain the point, at the learner's level, in simple English. "
+                    "question: the instruction in simple English."
+    )
+    examples: list[str] = Field(description="explain: 2 or 3 correct German example sentences. question: [].")
+    picture: str = Field(
+        description="explain: one short English description of a simple everyday scene that shows the idea, with no text in it. "
+                    "\"\" if there is no picture. question: \"\"."
+    )
+    qtype: Literal["", "fill_gap", "choose", "fix_sentence", "write", "speak", "photo"] = Field(
+        description="question: the kind of task. explain: \"\"."
+    )
+    prompt: str = Field(
+        description="question: the German task. fill_gap and choose use ___ for the gap. explain: \"\"."
+    )
+    options: list[str] = Field(description="choose: 3 German options, one of them the answer. Otherwise [].")
+    answer: str = Field(
+        description="question: the correct answer, or one model answer for write, speak and photo. explain: \"\"."
+    )
+    hint: str = Field(
+        description="question: a short nudge in simple English that does NOT contain the answer. explain: \"\"."
+    )
+    rule: str = Field(
+        description="question: one short sentence in simple English naming the rule. explain: \"\" or the rule."
+    )
+    category: LessonCategory = Field(description="The grammar category of the point, or \"\" if there is none.")
+
+
+# A whole lesson: the plan the model writes when the learner picks a topic.
+class Lesson(Strict):
+    title: str = Field(description="A short English title for the lesson, at most 6 words.")
+    steps: list[Step] = Field(
+        description="6 to 8 steps in teaching order. Start with an explanation. Mix explanations and questions, "
+                    "with at least 3 questions."
+    )
+
+
+# Vogi's answer to one learner answer, or to "I don't know".
+class LessonTurn(Strict):
+    correct: bool = Field(description="true only if the answer is right.")
+    feedback: str = Field(
+        description="One short sentence in simple English. If right, a short confirmation. If wrong, a second hint "
+                    "that is different from the first hint. It must NOT contain the expected answer."
+    )
+    add_steps: list[Step] = Field(
+        description="New steps to put right after this one, only when the learner did not know or got it wrong twice. "
+                    "Otherwise []."
+    )
 
 
 def json_schema(model: type[BaseModel]) -> dict[str, Any]:

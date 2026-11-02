@@ -1,7 +1,7 @@
 """Offline checks of Vogi's own logic (no model, no key). Run: uv run python -m tests.test_offline"""
 
 from vogi.evaluate import has, score_item
-from vogi.schema import Correction, Scene, json_schema
+from vogi.schema import Correction, Lesson, LessonTurn, Scene, json_schema
 from vogi.core import verify
 
 
@@ -58,6 +58,54 @@ def test_spoilers():
     # one of two new words is a leak for the judge
     assert _spoils("Use meinem here.", "meinem Bruders", "mein Bruder", any_word=True)
     assert not _spoils("Use meinem here.", "meinem Bruders", "mein Bruder")
+
+
+def test_lesson_schemas_are_strict():
+    for model, field in ((Lesson, "steps"), (LessonTurn, "add_steps")):
+        s = json_schema(model)
+        assert s["additionalProperties"] is False and set(s["required"]) == set(s["properties"])
+        step = s["properties"][field]["items"]
+        assert step["additionalProperties"] is False and set(step["required"]) == set(step["properties"])
+        assert "$ref" not in str(s) and "$defs" not in s
+        assert "" in step["properties"]["category"]["enum"] and "case" in step["properties"]["category"]["enum"]
+        assert step["properties"]["qtype"]["enum"][0] == "" and "photo" in step["properties"]["qtype"]["enum"]
+
+
+def test_lesson_feedback_does_not_give_the_answer():
+    from vogi.core import guard_feedback
+    step = {"answer": "meinem Bruder", "hint": "Which case comes after 'mit'?"}
+    # the learner typed mein Bruder: a second hint that names meinem gives the answer away
+    assert guard_feedback("Use meinem, the dative.", step, "mein Bruder") == step["hint"]
+    assert guard_feedback("Think about the case after mit.", step, "mein Bruder") == "Think about the case after mit."
+
+
+def test_lesson_steps_are_cleaned_and_explanations_do_not_give_answers():
+    from vogi.core import _guard_explains, clean_steps
+
+    def step(**kw):
+        base = {"kind": "", "text": "", "examples": [], "picture": "", "qtype": "", "prompt": "", "options": [],
+                "answer": "", "hint": "", "rule": "", "category": ""}
+        return {**base, **kw}
+
+    raw = [
+        step(kind="explain", text="Mit always takes the dative.", examples=["Ich fahre mit meinem Bruder.", ""],
+             picture="A bus stop", category="case"),
+        step(kind="question", text="Fill the gap.", qtype="choose", prompt="Ich fahre mit ___ Bruder.",
+             options=["mein", "meinem", "meine"], answer="meinem", hint="Which case comes after mit?", rule="r",
+             category="case"),
+        step(kind="question", text="Fill the gap.", qtype="choose", prompt="Ich ___ Brot.",
+             options=["esse", "isst"], answer="essen", hint="x", rule="r", category="verb_form"),
+        step(kind="question", text="Fill the gap.", qtype="gap", prompt="Ich ___ Brot.", answer="esse", hint="x"),
+    ]
+    steps = clean_steps(raw, limit=8)
+    # the choose step whose answer is not an option, and the unknown qtype, are dropped
+    assert [s["kind"] for s in steps] == ["explain", "question"]
+    assert steps[0]["examples"] == ["Ich fahre mit meinem Bruder."]
+    assert steps[1]["hint"] == "Which case comes after mit?"  # does not spoil meinem, so it stays
+    guarded = _guard_explains(steps)
+    # the example gives away "meinem", the answer of the question after it: the example goes
+    assert guarded[0]["examples"] == []
+    assert guarded[0]["text"] == "Mit always takes the dative."
 
 
 if __name__ == "__main__":

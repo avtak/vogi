@@ -40,6 +40,7 @@
     <div class="choices big">
       <button class="choice primary" data-go="write"><strong>Check my writing</strong><small>Type a text, or take a photo of your homework</small></button>
       <button class="choice" data-go="talk"><strong>Practise speaking</strong><small>Talk with a partner: the bakery, the doctor, a neighbour</small></button>
+      <button class="choice" data-go="lesson-pick"><strong>Learn something</strong><small>A short lesson that builds itself as you answer</small></button>
       <button class="choice" data-go="progress"><strong>My progress</strong><small id="progress-line">Your mistakes and your pages</small></button>
     </div>
     <p class="fine">Vogi marks where your mistakes are. You fix them, then it shows the rule.</p>
@@ -171,6 +172,42 @@
           </select></label>
       </div>
     </div>
+  </section>
+
+  <!-- Learn something: pick a topic, then a lesson that builds itself -->
+  <section class="view card hidden" id="v-lesson-pick">
+    <button class="back" data-back>← Back</button>
+    <h2>Learn something</h2>
+    <p class="note">Pick a topic, or type your own in any language. Vogi builds a short lesson, and it adds steps when you need them.</p>
+    <div class="chips">
+      <button class="chip-topic" data-topic="The German articles der, die and das: which one when">der, die, das</button>
+      <button class="chip-topic" data-topic="The Perfekt: past tense with haben or sein, and the Partizip">The Perfekt</button>
+      <button class="chip-topic" data-topic="Dativ after mit: the article and the noun after mit">Dativ after mit</button>
+      <button class="chip-topic" data-topic="Numbers and prices: saying numbers and asking how much">Numbers and prices</button>
+      <button class="chip-topic hidden" id="chip-mistakes">From my mistakes</button>
+    </div>
+    <label for="lesson-topic" class="lbl">Or your own topic</label>
+    <div class="row say">
+      <input type="text" id="lesson-topic" maxlength="300" autocomplete="off" placeholder="For example: the Akkusativ after durch" aria-label="Your topic">
+      <button class="btn" id="lesson-mic">🎤 Speak</button>
+    </div>
+    <button class="btn primary big" id="lesson-go">Start the lesson</button>
+  </section>
+
+  <!-- The lesson: cards in a column, one active at a time -->
+  <section class="view hidden" id="v-lesson">
+    <button class="back" data-back>← Back</button>
+    <h2 id="lesson-title"></h2>
+    <div id="lesson-cards"></div>
+    <section class="card hidden" id="lesson-end">
+      <h2>Lesson done</h2>
+      <p id="lesson-score"></p>
+      <div class="row">
+        <button class="btn primary" id="lesson-practise">Practise my mistakes</button>
+        <button class="btn" id="lesson-again">Another lesson</button>
+      </div>
+      <p class="fine">Your wrong answers are in My progress.</p>
+    </section>
   </section>
 
   <!-- My progress: mistakes and pages -->
