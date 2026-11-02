@@ -125,21 +125,48 @@
       <p class="note">Pick a scene. You speak, a partner answers. Vogi gives feedback at the end.</p>
       <div class="scenes" id="scenes"></div>
     </div>
+    <div id="own" class="hidden">
+      <h2>Make your own scene</h2>
+      <p class="note">Describe a situation you want to practise, in any language. Vogi writes the scene for you.</p>
+      <textarea id="own-text" maxlength="400" rows="3" placeholder="For example: I call my landlord because the heating is broken." aria-label="Your situation"></textarea>
+      <div class="row">
+        <button class="btn primary" id="own-go">Make the scene</button>
+        <button class="link" id="own-cancel">Cancel</button>
+      </div>
+      <div id="own-preview" class="hidden">
+        <h3 id="own-title"></h3>
+        <p class="note" id="own-partner"></p>
+        <div class="mission">Your mission:<ol id="own-goals"></ol></div>
+        <div class="row">
+          <button class="btn primary" id="own-start">Start talking</button>
+          <button class="btn" id="own-again">Make it again</button>
+        </div>
+      </div>
+    </div>
     <div id="talk" class="hidden">
       <img id="talk-pic" class="talk-pic hidden" alt="The scene, drawn by Muse Image">
       <h2 id="scene-title"></h2>
       <div class="mission">Your mission:<ol id="goals"></ol></div>
       <div class="chat" id="chat" aria-live="polite"></div>
       <p class="note hidden" id="talk-hint">Vogi misheard a word? Tap ✎ on your line to fix it, or ✕ to remove it.</p>
+      <div class="suggest hidden" id="talk-done">
+        <span id="talk-done-text"></span>
+        <button class="btn primary" id="see-feedback">See my feedback</button>
+      </div>
       <button class="btn primary big" id="mic">🎤 Speak</button>
       <div class="row say">
         <input type="text" id="say" maxlength="300" placeholder="or type your answer" autocomplete="off">
         <button class="btn" id="send">Send</button>
       </div>
       <div class="row quiet">
-        <button class="btn" id="end-talk">End and get feedback</button>
+        <button class="btn" id="end-talk">End the talk</button>
         <button class="link" id="new-scene">Other scene</button>
         <label class="try"><input type="checkbox" id="voice" checked> Partner speaks aloud</label>
+        <label class="try">Time to think after I stop
+          <select id="wait" aria-label="Time to think after I stop">
+            <option value="300">about 2 s</option><option value="1000">about 3 s</option>
+            <option value="2000">about 4 s</option><option value="3000">about 5 s</option>
+          </select></label>
       </div>
     </div>
   </section>

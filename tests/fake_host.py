@@ -42,6 +42,10 @@ CANNED = {
         {"edit": 2, "found": True, "box": [520, 120, 760, 230]},
     ]},
     "PartnerTurn": {"reply": "Guten Morgen! Was darf es sein?", "help": ["Ich möchte …", "zwei Brötchen", "bitte"], "goals_done": [1], "finished": False},
+    "Scene": {"title": "Call the landlord", "partner": "Herr Wagner, the landlord. Busy but fair.",
+              "setting": "A phone call in the evening. The heating in the learner's flat is broken.",
+              "words": ["Heizung", "kaputt", "Wohnung", "kalt", "Handwerker", "morgen", "Termin", "reparieren"],
+              "goals": ["Say who you are", "Say that the heating is broken", "Agree when someone comes"]},
     "Verdict": {"correct": True, "feedback": "Yes, the verb is now in position 2."},
 }
 

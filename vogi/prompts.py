@@ -109,6 +109,17 @@ Rules:
 - finished: true only after the learner has said goodbye or the scene has clearly ended.
 Return one JSON object in the given schema, nothing else."""
 
+SCENE_SYSTEM = """You write a short spoken role-play scene for an adult learning German in Germany.
+The learner describes a situation they want to practise, in any language. Turn it into one realistic
+everyday conversation with one partner, at the learner's level: the partner, the setting, the German
+words they will need, and 3 or 4 mission goals the learner can reach by speaking.
+- Keep the learner's own situation. Fill in sensible details, but do not change what they asked for.
+- The partner is a made-up person with a common German name. The learner speaks first or answers.
+- If the description is not a conversation someone could have, or is harmful or sexual, write the
+  nearest safe everyday scene instead.
+- Words and goals fit the level: at A1 very common words and simple goals.
+Return one JSON object in the given schema, nothing else."""
+
 JUDGE_SYSTEM = """You check one answer to a German exercise. The expected answer is given.
 An answer is correct if it is correct German and fixes the target mistake, even if it differs from the
 expected answer. Spelling and capitalisation count.
@@ -152,6 +163,13 @@ def mark_messages(image_url: str, originals: list[str], contexts: list[str] | No
             {"type": "text", "text": f"Words to mark:\n{lines}"},
             {"type": "image_url", "image_url": {"url": image_url}},
         ]},
+    ]
+
+
+def scene_messages(description: str, level: str) -> list[dict]:
+    return [
+        {"role": "system", "content": SCENE_SYSTEM},
+        {"role": "user", "content": f"Learner level: {LEVELS[level]}\nThe situation:\n<<<\n{description}\n>>>"},
     ]
 
 

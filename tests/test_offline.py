@@ -1,7 +1,7 @@
 """Offline checks of Vogi's own logic (no model, no key). Run: uv run python -m tests.test_offline"""
 
 from vogi.evaluate import has, score_item
-from vogi.schema import Correction, json_schema
+from vogi.schema import Correction, Scene, json_schema
 from vogi.core import verify
 
 
@@ -12,6 +12,12 @@ def test_schema_is_strict():
     edit = s["properties"]["edits"]["items"]
     assert edit["additionalProperties"] is False and set(edit["required"]) == set(edit["properties"])
     assert "$ref" not in str(s) and "$defs" not in s
+
+
+def test_schema_keeps_a_field_named_title():
+    s = json_schema(Scene)  # pydantic's labels go, the scene's own "title" field stays
+    assert "title" in s["properties"] and set(s["required"]) == set(s["properties"])
+    assert "title" not in s["properties"]["title"]
 
 
 def test_verify_flags_invented_edit():

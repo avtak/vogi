@@ -25,9 +25,12 @@ work on paper.
    read, and the learner confirms it. Then Vogi marks each mistake with a hint, and the learner
    fixes them one by one. On a photo, Vogi highlights the mistakes on the page itself.
 3. **Practise speaking:** a hands-free role-play with a small mission. The scenes are everyday:
-   the bakery, calling in sick, the neighbour, the doctor, the Bürgeramt. The words appear while
-   the learner speaks, and the partner answers at their level, with "words you can use" under
-   each line. At the end, everything the learner said gets the same try-first feedback.
+   the bakery, calling in sick, the neighbour, the doctor, the Bürgeramt. With **+** the learner
+   describes their own situation in any language ("I call my landlord because the heating is
+   broken"), and Vogi writes the scene and draws it. The words appear while the learner speaks,
+   and the partner answers at their level, with "words you can use" under each line. The learner
+   chooses how long Vogi waits after they stop. When the talk ends, they check their lines, then
+   everything they said gets the same try-first feedback.
 4. **My progress:** the learner's most frequent mistakes, "Practise my top 3", and every checked
    homework page with its marks. All of it stays in the learner's browser.
 
@@ -51,6 +54,7 @@ language app, Sprachvogel.
 | Red pen | `/api/locate` | Muse Spark's perception grounding boxes each wrong word on the photo (0-1000 grid). The photo is sent upright, and each word comes with its line, so the right copy of a repeated word is found |
 | Level estimate | `level_estimate` in every correction | The CEFR level a text shows, by range of grammar and words, not by the number of mistakes |
 | Talk | `vogi/scenes.py`, `/api/talk`, `/api/live` | The page streams the microphone (24 kHz PCM) to Vogi's server, which relays it to Muse Voice Transcribe's realtime socket, so the API key never reaches the browser. Endpointing marks the end of each sentence, and a short pause to think joins the same line. The partner runs at `reasoning_effort="minimal"` (about 2 s a turn) and never corrects mid-talk |
+| Own scenes | `/api/scene`, `/api/scene-picture` | Muse Spark turns the learner's description into a scene (partner, setting, words, goals) in the same strict format as the built-in ones; Muse Image draws it. The scene and its picture stay in the learner's browser |
 | Scene pictures | `/api/scene-image/{scene}` | Muse Image draws each everyday scene, with no text in the picture, so the learner sees where they are before they speak |
 | Memory | `vogi/static/vogi.js` | Mistakes and checked pages are kept in the browser (localStorage, IndexedDB). No accounts, no server storage |
 | Test set and score | `eval/` | 56 German sentences with known errors (or none) and a scorer that runs the same set on any model |
@@ -104,7 +108,7 @@ the page without a key, `tests/fake_host.py` serves canned answers that do not c
 - It does not score pronunciation. Speech-to-text hides pronunciation errors, so Vogi does not claim it.
 - Speech recognition can mishear. The learner can fix any line before the feedback.
 - No native-speaker teacher has reviewed the test sets yet.
-- Vogi is not a chat. It has no free-text conversation outside the scenes.
+- Vogi is not a chat. It has no free-text conversation outside the scenes, and a learner's own scene is still a scene with a mission.
 
 ## Next
 

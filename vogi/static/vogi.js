@@ -62,7 +62,7 @@ function show(name, push = true) {
   document.querySelectorAll(".view").forEach((v) => v.classList.toggle("hidden", v.id !== "v-" + name));
   window.scrollTo({ top: 0 });
   if (name === "home") { nav.length = 0; renderProgressLine(); }
-  if (name === "talk" && (talk.ended || !talk.scene)) { $("talk").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); }
+  if (name === "talk" && (talk.ended || !talk.scene)) { $("talk").classList.add("hidden"); $("own").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); }
   if (name !== "talk" && typeof rec !== "undefined" && rec && talk.scene) { talk.handsFree = false; stopListening(); }
 }
 function back() { show(nav.pop() || "home", false); }
@@ -475,18 +475,74 @@ function practiseTop() {
 // Talk: a role-play with a mission. The partner never corrects; the feedback comes after.
 const talk = { scene: null, history: [], busy: false };
 const MAX_TURNS = 8;
+const OWN_KEY = "vogi.scenes.v1";
+const WAIT_KEY = "vogi.wait";
+let serverScenes = [];
 
 async function loadScenes() {
+  try { serverScenes = await getJSON("/api/scenes"); } catch { /* the server is down: loadProviders says so */ }
+  renderScenes();
+}
+
+// The learner's own scenes live in this browser, newest first, with their picture.
+function ownScenes() { try { return JSON.parse(stored(OWN_KEY) || "[]"); } catch { return []; } }
+function saveOwn(sc) {
+  let list = [sc].concat(ownScenes().filter((x) => x.id !== sc.id)).slice(0, 6);
+  try { localStorage.setItem(OWN_KEY, JSON.stringify(list)); }
+  catch { list = list.map(({ picture, ...x }) => x); store(OWN_KEY, JSON.stringify(list)); } // storage full: keep the text
+  renderScenes();
+}
+function renderScenes() {
+  const card = (sc) => {
+    const pic = el("img", { class: "scene-pic", alt: "" });
+    const b = el("button", { class: "scene" }, pic, el("strong", {}, sc.title),
+      sc.own ? el("span", { class: "own-tag" }, "My scene") : "", el("small", {}, sc.goals.join(" · ")));
+    b.onclick = () => startScene(sc);
+    pictureFor(sc).then((url) => { if (url) pic.src = url; else pic.remove(); });
+    return b;
+  };
+  const add = el("button", { class: "scene add" }, el("strong", {}, "+"), el("small", {}, "Make your own scene"));
+  add.onclick = openOwn;
+  $("scenes").replaceChildren(add, ...ownScenes().map(card), ...serverScenes.map(card));
+}
+function pictureFor(sc) { return sc.own ? Promise.resolve(sc.picture || null) : scenePicture(sc.id); }
+const sceneBody = ({ title, partner, setting, words, goals }) => ({ title, partner, setting, words, goals });
+
+// Make your own scene: the learner describes a situation, Muse Spark writes the scene, Muse Image draws it.
+let draft = null;
+function openOwn() {
+  draft = null;
+  $("own-preview").classList.add("hidden");
+  $("scene-pick").classList.add("hidden"); $("own").classList.remove("hidden");
+  $("own-text").focus();
+}
+async function makeOwn() {
+  const text = $("own-text").value.trim();
+  if (text.length < 3 || $("own-go").disabled) return;
+  $("own-go").disabled = $("own-again").disabled = true;
+  status("Vogi is writing your scene …");
   try {
-    const list = await getJSON("/api/scenes");
-    $("scenes").replaceChildren(...list.map((sc) => {
-      const pic = el("img", { class: "scene-pic", alt: "" });
-      const b = el("button", { class: "scene" }, pic, el("strong", {}, sc.title), el("small", {}, sc.goals.join(" · ")));
-      b.onclick = () => startScene(sc);
-      scenePicture(sc.id).then((url) => { if (url) pic.src = url; else pic.remove(); });
-      return b;
-    }));
-  } catch { /* the server is down: loadProviders says so */ }
+    const data = await api("/api/scene", { description: text, level: state.level, provider: provider() });
+    draft = { ...data.result, id: "own-" + Date.now().toString(36), own: true };
+    $("own-title").textContent = draft.title;
+    $("own-partner").textContent = `${draft.partner} ${draft.setting}`;
+    $("own-goals").replaceChildren(...draft.goals.map((g) => el("li", {}, g)));
+    $("own-preview").classList.remove("hidden");
+    status("");
+  } catch (e) { status(e.message); }
+  $("own-go").disabled = $("own-again").disabled = false;
+}
+function startOwn() {
+  if (!draft) return;
+  const sc = draft;
+  saveOwn(sc);
+  $("own").classList.add("hidden");
+  startScene(sc);
+  // The picture comes a little later; the talk does not wait for it.
+  api("/api/scene-picture", { scene: sceneBody(sc) }).then((d) => {
+    sc.picture = d.image; saveOwn(sc);
+    if (talk.scene === sc) { $("talk-pic").src = d.image; $("talk-pic").classList.remove("hidden"); }
+  }).catch(() => { /* no picture: the scene works without one */ });
 }
 
 // Scene pictures come from Muse Image. The server makes each one once; the page keeps the URL.
@@ -569,9 +625,10 @@ function startScene(sc) {
   stopListening();
   Object.assign(talk, { scene: sc, history: [], busy: false, goalsDone: 0, handsFree: true, ended: false });
   $("talk-hint").classList.add("hidden"); $("end-talk").disabled = false;
+  $("talk-done").classList.add("hidden"); $("talk").classList.remove("over"); $("own").classList.add("hidden");
   $("scene-title").textContent = sc.title;
   $("talk-pic").classList.add("hidden");
-  scenePicture(sc.id).then((url) => { if (url && talk.scene === sc) { $("talk-pic").src = url; $("talk-pic").classList.remove("hidden"); } });
+  pictureFor(sc).then((url) => { if (url && talk.scene === sc) { $("talk-pic").src = url; $("talk-pic").classList.remove("hidden"); } });
   $("goals").replaceChildren(...sc.goals.map((g) => el("li", {}, g)));
   $("chat").replaceChildren();
   $("scene-pick").classList.add("hidden"); $("talk").classList.remove("hidden");
@@ -584,7 +641,8 @@ async function partnerTurn() {
   setBusy(true); status(talk.history.length ? "The partner is answering …" : "The partner is starting …");
   try {
     const history = talk.history.filter((t) => !t.removed).map(({ role, text }) => ({ role, text }));
-    const data = await api("/api/talk", { scene: talk.scene.id, level: state.level, history, provider: provider() });
+    const where = talk.scene.own ? { custom: sceneBody(talk.scene) } : { scene: talk.scene.id };
+    const data = await api("/api/talk", { ...where, level: state.level, history, provider: provider() });
     const r = data.result;
     talk.history.push({ role: "partner", text: r.reply });
     bubble("partner", r.reply);
@@ -612,20 +670,29 @@ function learnerSay(text) {
   partnerTurn();
 }
 
-// End of the talk: straight to the feedback on everything the learner said. Misheard words are
-// fixed on the lines themselves (✎), so there is no extra step here.
+// End of the talk: a pause on the talk itself, so the learner sees how it ended and can fix a
+// misheard line (✎). The feedback comes when they press the button.
 async function endTalk() {
-  if (talk.ended) return; // a double click must not send twice
+  if (talk.ended) return; // a double click must not end twice
   talk.handsFree = false; talk.ended = true;
   await stopListening();
-  const said = talk.history.filter((t) => t.role === "learner" && !t.removed);
-  if (!said.length) { status("Say something first."); talk.ended = false; return; }
-  setBusy(true);
-  $("end-talk").disabled = true;
+  if (!talk.history.some((t) => t.role === "learner" && !t.removed)) { status("Say something first."); talk.ended = false; return; }
   document.querySelectorAll(".helpwords").forEach((n) => n.remove());
+  $("talk").classList.add("over");
+  $("talk-done-text").textContent = `The talk is over. Mission: ${talk.goalsDone || 0} of ${talk.scene.goals.length} goals reached. ` +
+    "Check your lines: tap ✎ if Vogi misheard a word.";
+  $("talk-done").classList.remove("hidden");
+  $("see-feedback").disabled = false;
+  status("");
+}
+async function feedback() {
+  if ($("see-feedback").disabled) return; // a double click must not send twice
+  const said = talk.history.filter((t) => t.role === "learner" && !t.removed);
+  if (!said.length) return;
+  $("see-feedback").disabled = true;
   $("talk-note").textContent = `Mission: ${talk.goalsDone || 0} of ${talk.scene.goals.length} goals reached. Here is the feedback on what you said.`;
   await runCorrect(said.map((t) => t.text).join("\n"), false, true);
-  setBusy(false); $("end-talk").disabled = false;
+  $("see-feedback").disabled = false;
 }
 
 // Hands-free listening. Muse Voice Transcribe's endpointing mode says when the learner has
@@ -645,7 +712,7 @@ async function listen() {
   // A learner needs time to think mid-sentence. After the recogniser marks the end of a
   // sentence, Vogi waits a little longer; if the learner speaks again, the words join the same line.
   me.parts = [];
-  const grace = { A1: 1500, A2: 1200 }[main(state.level)] || 800; // on top of about 2 s the recogniser waits
+  const grace = Number($("wait").value) || 1000; // on top of about 2 s the recogniser waits (no setting for that)
   const send = () => {
     if (live !== me || !me.parts.length) return;
     const t = me.parts.join(" ").trim().replace(/([.!?])\1+$/, "$1");
@@ -932,7 +999,15 @@ $("say").onkeydown = (e) => { if (e.key === "Enter") $("send").click(); };
 // Typing pauses hands-free listening, so the microphone does not talk over the keyboard.
 $("say").onfocus = () => { if (rec && talk.handsFree) { talk.handsFree = false; stopListening(); status("Listening paused while you type."); } };
 $("end-talk").onclick = endTalk;
-$("new-scene").onclick = () => { $("talk").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); speechSynthesis && speechSynthesis.cancel(); };
+$("see-feedback").onclick = feedback;
+$("new-scene").onclick = () => { talk.ended = true; stopListening(); $("talk").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); speechSynthesis && speechSynthesis.cancel(); };
+$("own-go").onclick = makeOwn;
+$("own-again").onclick = makeOwn;
+$("own-start").onclick = startOwn;
+$("own-cancel").onclick = () => { $("own").classList.add("hidden"); $("scene-pick").classList.remove("hidden"); };
+// Time to think: the learner's choice, kept in this browser. Beginners start with more.
+$("wait").value = stored(WAIT_KEY) || (["A1", "A2"].includes(main(state.level || "A2")) ? "1000" : "300");
+$("wait").onchange = () => store(WAIT_KEY, $("wait").value);
 $("pv-close").onclick = closePage;
 $("pv-delete").onclick = async () => {
   if (!openPage || !confirm("Delete this page from this browser?")) return;

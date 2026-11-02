@@ -192,3 +192,11 @@ th { color: var(--muted); font-weight: 600; }
 .scene-pic { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 8px; margin-bottom: 8px; background: var(--line); }
 .talk-pic { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; margin: 4px 0 10px; }
 @media (max-width: 480px) { .lvw { display: none; } }
+
+/* Talk: when it is over, only the lines and the feedback button stay */
+#talk.over #mic, #talk.over .row.say, #talk.over #end-talk { display: none; }
+#own textarea { width: 100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); }
+.scene.add { display: flex; flex-direction: column; justify-content: center; align-items: center; border-style: dashed; min-height: 120px; }
+.scene.add strong { font-size: 28px; }
+.scene .own-tag { display: block; font-size: 12px; color: var(--accent); }
+#wait { font: inherit; margin-left: 6px; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 2px 6px; }

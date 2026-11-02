@@ -45,7 +45,7 @@ ACCESS_CODE = os.environ.get("VOGI_ACCESS_CODE", "")
 HOURLY_PER_VISITOR = int(os.environ.get("VOGI_HOURLY_LIMIT", "60"))
 DAILY_TOTAL = int(os.environ.get("VOGI_DAILY_LIMIT", "400"))  # about $2 to $5 a day at most
 MODEL_PATHS = {"/api/correct", "/api/read", "/api/locate", "/api/exercises", "/api/check", "/api/talk",
-               "/api/transcribe", "/api/live"}
+               "/api/transcribe", "/api/live", "/api/scene", "/api/scene-picture"}
 _visits: dict[str, deque] = defaultdict(deque)
 _day = {"date": "", "count": 0}
 _tries: dict[str, deque] = defaultdict(deque)
@@ -132,8 +132,28 @@ class Turn(BaseModel):
     text: str = Field(max_length=600)
 
 
+class SceneIn(BaseModel):
+    """A learner's own scene, kept in their browser and sent with every turn."""
+    title: str = Field(min_length=1, max_length=80)
+    partner: str = Field(min_length=1, max_length=300)
+    setting: str = Field(min_length=1, max_length=400)
+    words: list[str] = Field(default_factory=list, max_length=20)
+    goals: list[str] = Field(min_length=1, max_length=5)
+
+
+class SceneAsk(BaseModel):
+    description: str = Field(min_length=3, max_length=400)
+    level: Level = "A2"
+    provider: str | None = None
+
+
+class PictureIn(BaseModel):
+    scene: SceneIn
+
+
 class TalkIn(BaseModel):
-    scene: str
+    scene: str = ""
+    custom: SceneIn | None = None
     level: Level = "A2"
     history: list[Turn] = Field(default_factory=list, max_length=30)
     provider: str | None = None
@@ -292,9 +312,21 @@ def scene_image(scene_id: str):
     return Response(path.read_bytes(), media_type="image/webp", headers={"Cache-Control": "max-age=86400"})
 
 
+@app.post("/api/scene")
+def make_scene(body: SceneAsk):
+    return _run(core.make_scene, _provider(body.provider), body.description, body.level)
+
+
+@app.post("/api/scene-picture")
+def scene_picture(body: PictureIn):
+    if not os.environ.get("MODEL_API_KEY"):
+        raise HTTPException(404, "Scene pictures need the Meta Model API.")
+    return {"image": _run(core.scene_thumbnail, providers.get("meta"), body.scene.model_dump())}
+
+
 @app.post("/api/talk")
 def talk(body: TalkIn):
-    scene = scenes.SCENES.get(body.scene)
+    scene = body.custom.model_dump() if body.custom else scenes.SCENES.get(body.scene)
     if not scene:
         raise HTTPException(400, "Unknown scene.")
     history = [t.model_dump() for t in body.history]

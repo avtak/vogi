@@ -20,7 +20,7 @@ from pydantic import BaseModel, ValidationError
 
 from . import prompts
 from .providers import Provider, client
-from .schema import Correction, Exercises, Marks, PartnerTurn, Reading, Verdict, json_schema
+from .schema import Correction, Exercises, Marks, PartnerTurn, Reading, Scene, Verdict, json_schema
 
 T = TypeVar("T", bound=BaseModel)
 log = logging.getLogger("vogi")
@@ -215,6 +215,23 @@ def scene_image(p: Provider, scene: dict) -> bytes:
     r = client(p).images.generate(model="muse-image-1.0", prompt=prompt, n=1, size="1792x1024",
                                   response_format="b64_json", extra_body={"output_format": "webp"})
     return base64.b64decode(r.data[0].b64_json)
+
+
+def make_scene(p: Provider, description: str, level: str) -> dict:
+    result, meta = ask(p, prompts.scene_messages(description, level), Scene, effort="low")
+    scene = result.model_dump()
+    scene["words"] = [w[:40] for w in scene["words"]][:14]
+    scene["goals"] = [g[:150] for g in scene["goals"]][:4]
+    return {"result": scene, "meta": meta}
+
+
+def scene_thumbnail(p: Provider, scene: dict) -> str:
+    """A small picture for a learner's own scene, as a data URL the browser keeps (about 40 kB)."""
+    im = Image.open(io.BytesIO(scene_image(p, scene)))
+    im.thumbnail((768, 768))
+    buf = io.BytesIO()
+    im.save(buf, "WEBP", quality=70)
+    return "data:image/webp;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def exercises(p: Provider, level: str, edits: list[dict]) -> dict:

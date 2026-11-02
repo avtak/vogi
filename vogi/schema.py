@@ -101,6 +101,15 @@ class PartnerTurn(Strict):
     finished: bool = Field(description="true when the conversation has come to a natural end.")
 
 
+# A Talk scene the learner described in their own words. Same fields as vogi/scenes.py.
+class Scene(Strict):
+    title: str = Field(description="A short English title, at most 6 words, e.g. 'Call the landlord'.")
+    partner: str = Field(description="Who the learner talks to, in English: a made-up name, the role, and how they talk.")
+    setting: str = Field(description="One English sentence: where and when, and what the learner wants.")
+    words: list[str] = Field(description="8 to 12 German words or short phrases the learner will need.")
+    goals: list[str] = Field(description="3 or 4 short mission goals in English, in the order of the talk.")
+
+
 class Verdict(Strict):
     correct: bool
     feedback: str = Field(description="One short sentence in simple English.")
@@ -115,7 +124,9 @@ def json_schema(model: type[BaseModel]) -> dict[str, Any]:
         if isinstance(node, dict):
             if "$ref" in node:
                 return walk(defs[node["$ref"].split("/")[-1]])
-            return {k: walk(v) for k, v in node.items() if k != "title"}
+            # "title" is pydantic's label, unless it is a field name inside "properties"
+            return {k: (walk(v) if k != "properties" else {f: walk(x) for f, x in v.items()})
+                    for k, v in node.items() if k != "title" or not isinstance(v, str)}
         if isinstance(node, list):
             return [walk(v) for v in node]
         return node
