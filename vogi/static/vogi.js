@@ -539,7 +539,12 @@ async function makeOwn() {
   status("Vogi is writing your scene …");
   try {
     const data = await api("/api/scene", { description: text, level: state.level, provider: provider() });
-    draft = { ...data.result, id: "own-" + Date.now().toString(36), own: true };
+    const sc = { ...data.result, id: "own-" + Date.now().toString(36), own: true };
+    draft = sc;
+    // Muse Image starts drawing while the learner reads the mission, so the picture is there before the talk.
+    $("own-pic").classList.add("hidden");
+    sc.drawing = api("/api/scene-picture", { scene: sceneBody(sc) }).then((d) => d.image).catch(() => null);
+    sc.drawing.then((img) => { if (img && draft === sc) { $("own-pic").src = img; $("own-pic").classList.remove("hidden"); } });
     $("own-title").textContent = draft.title;
     $("own-partner").textContent = `${draft.partner} ${draft.setting}`;
     $("own-goals").replaceChildren(...draft.goals.map((g) => el("li", {}, g)));
@@ -548,17 +553,21 @@ async function makeOwn() {
   } catch (e) { status(e.message); }
   $("own-go").disabled = $("own-again").disabled = false;
 }
-function startOwn() {
-  if (!draft) return;
+async function startOwn() {
+  if (!draft || $("own-start").disabled) return;
   const sc = draft;
+  $("own-start").disabled = true;
+  status("Vogi is drawing your scene …");
+  // Wait a few seconds for the picture, never long. A picture that comes later is kept for next
+  // time and does not pop up during the talk.
+  const drawing = sc.drawing; delete sc.drawing;
+  const late = (img) => { if (img) { sc.picture = img; saveOwn(sc); } };
+  const img = await Promise.race([drawing, new Promise((r) => setTimeout(() => r(undefined), 8000))]);
+  if (img === undefined) drawing.then(late); else late(img);
   saveOwn(sc);
+  status(""); $("own-start").disabled = false;
   $("own").classList.add("hidden");
   startScene(sc);
-  // The picture comes a little later; the talk does not wait for it.
-  api("/api/scene-picture", { scene: sceneBody(sc) }).then((d) => {
-    sc.picture = d.image; saveOwn(sc);
-    if (talk.scene === sc) { $("talk-pic").src = d.image; $("talk-pic").classList.remove("hidden"); }
-  }).catch(() => { /* no picture: the scene works without one */ });
 }
 
 // Scene pictures come from Muse Image. The server makes each one once; the page keeps the URL.
