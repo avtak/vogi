@@ -6,6 +6,8 @@ const TRY_KEY = "vogi.tryfirst";
 const LEVEL_KEY = "vogi.level";
 const EST_KEY = "vogi.level.estimates";
 const DISMISS_KEY = "vogi.level.dismissed";
+const LESSONS_KEY = "vogi.lessons.v1";
+const LESSON_KEEP = 10; // the newest lesson plans kept in this browser
 // The learner picks one of four plain answers (A1 to B2). Vogi moves the level from their texts,
 // up to C2.
 const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
@@ -1007,6 +1009,7 @@ async function startLesson(topic, mistakes = []) {
   try {
     const data = await api("/api/lesson", { topic, level: state.level, mistakes, provider: provider() });
     buildLesson(data.result);
+    saveLesson(data.result, topic);
     status(""); show("lesson");
   } catch (e) { status(e.message); } finally { lesson.busy = false; }
 }
@@ -1222,8 +1225,215 @@ function recentSteps() {
     .map((s) => (s.kind === "explain" ? `Explained: ${s.text}` : `Asked: ${s.text} ${s.prompt}`).slice(0, 120));
 }
 
+// My lessons: the plan of each lesson the learner starts, newest first, so "Do it again" can replay it.
+function loadLessons() {
+  try { const v = JSON.parse(stored(LESSONS_KEY) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+function saveLesson(r, topic) {
+  const plan = { id: Date.now().toString(36), t: new Date().toISOString(), title: r.title, topic, level: state.level, steps: r.steps.map(stepBody) };
+  store(LESSONS_KEY, JSON.stringify([plan].concat(loadLessons()).slice(0, LESSON_KEEP)));
+  renderLessons();
+}
+function renderLessons() {
+  const list = loadLessons();
+  $("lessons").classList.toggle("hidden", !list.length);
+  $("lessons-list").replaceChildren(...list.map((l) => {
+    const again = el("button", { class: "btn" }, "Do it again");
+    again.onclick = () => { buildLesson(l); show("lesson"); };
+    return el("li", {}, el("strong", {}, l.title), el("span", { class: "note" }, ` · ${l.level} · ${new Date(l.t).toLocaleDateString()}`), again);
+  }));
+}
+
+// Move to another device: one JSON file with what the learner keeps in this browser.
+// The access code never goes into the file. Everything is checked before anything is written.
+const BACKUP_MAX = 30 * 1024 * 1024;
+const BAD_FILE = "This file is not a Vogi backup. Nothing was changed.";
+const WAIT_CHOICES = ["300", "1000", "2000", "3000"];
+const isObj = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
+const isStr = (x, max) => typeof x === "string" && x.length <= max;
+const isStrs = (x, max, len) => Array.isArray(x) && x.length <= max && x.every((s) => isStr(s, len));
+const isDataImage = (x) => isStr(x, 8 * 1024 * 1024) && x.startsWith("data:image/");
+const markOk = (m) => isObj(m) && Number.isInteger(m.edit) && typeof m.found === "boolean" &&
+  (!m.found || (Array.isArray(m.box) && m.box.length === 4 && m.box.every(Number.isFinite)));
+const editOk = (e) => isObj(e) && isStr(e.original, 500) && isStr(e.replacement, 500) && isStr(e.category, 40) && isStr(e.rule, 1000);
+const lessonStepOk = (s) => isObj(s) && (s.kind === "explain" || s.kind === "question") && isStrs(s.examples ?? [], 10, 300) &&
+  isStrs(s.options ?? [], 6, 200) && ["text", "picture", "qtype", "prompt", "answer", "hint", "rule", "category"].every((k) => isStr(s[k] ?? "", 600));
+const memKey = (m) => [m.t, m.original, m.replacement, m.category].join("\u0001");
+const sceneTime = (s) => parseInt(String(s.id).replace(/^own-/, ""), 36) || 0;
+
+function dataUrlToBlob(url) {
+  const comma = url.indexOf(",");
+  const head = comma < 0 ? "" : url.slice(0, comma);
+  if (!head.endsWith(";base64")) throw new Error("a picture is broken");
+  const bin = atob(url.slice(comma + 1));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: head.slice(5, -7) });
+}
+function blobToDataUrl(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result); r.onerror = () => rej(r.error);
+    r.readAsDataURL(blob);
+  });
+}
+async function pagesAll() { return (await pagesTx("readonly", (st) => st.getAll())) || []; }
+function pagesPut(list) {
+  return pagesDb().then((d) => new Promise((res, rej) => {
+    const tx = d.transaction("pages", "readwrite");
+    for (const p of list) tx.objectStore("pages").put(p);
+    tx.oncomplete = () => { d.close(); res(); };
+    tx.onerror = tx.onabort = () => { d.close(); rej(tx.error || new Error("the write was stopped")); };
+  }));
+}
+
+async function makeBackup() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("vogi.") && key !== CODE_KEY) data[key] = localStorage.getItem(key);
+  }
+  data.pages = [];
+  for (const p of await pagesAll()) {
+    data.pages.push({ id: p.id, t: p.t, level: p.level, text: p.text, marks: p.marks, edits: p.edits, photo: await blobToDataUrl(p.photo) });
+  }
+  return { app: "vogi", version: 1, exported: new Date().toISOString(), data };
+}
+function backupMsg(msg) { $("backup-msg").textContent = msg; }
+async function exportBackup() {
+  const btn = $("export-btn");
+  if (btn.disabled) return;
+  btn.disabled = true; backupMsg("Preparing the file …");
+  try {
+    const file = await makeBackup();
+    const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const name = `vogi-backup-${d}.json`;
+    const url = URL.createObjectURL(new Blob([JSON.stringify(file)], { type: "application/json" }));
+    const a = el("a", { href: url, download: name });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    backupMsg(`Saved ${name}. Import it on the other device.`);
+  } catch (e) { backupMsg("Export failed: " + e.message); }
+  finally { btn.disabled = false; }
+}
+
+// Returns the checked content, or throws a plain message. Nothing is written here.
+function checkBackup(file) {
+  const fail = (what) => new Error(`This file is not a Vogi backup: ${what}. Nothing was changed.`);
+  if (!isObj(file) || file.app !== "vogi" || file.version !== 1 || !isObj(file.data)) throw fail("the header is wrong");
+  const d = file.data;
+  const list = (key, ok) => {
+    if (d[key] === undefined) return [];
+    if (!isStr(d[key], 5000000)) throw fail(`${key} is not text`);
+    let v;
+    try { v = JSON.parse(d[key]); } catch { throw fail(`${key} is broken`); }
+    if (!Array.isArray(v) || v.length > 5000 || !v.every(ok)) throw fail(`${key} has an entry in the wrong form`);
+    return v;
+  };
+  const mistakes = list(MEMORY_KEY, (m) => isObj(m) && isStr(m.t, 40) && isStr(m.original, 500) && isStr(m.replacement, 500) &&
+    isStr(m.category, 40) && (m.hint === undefined || isStr(m.hint, 1000)) && (m.rule === undefined || isStr(m.rule, 1000)) &&
+    (m.level === undefined || isStr(m.level, 8)));
+  const scenes = list(OWN_KEY, (s) => isObj(s) && isStr(s.id, 80) && isStr(s.title, 80) && isStr(s.partner, 300) &&
+    isStr(s.setting, 400) && isStrs(s.words ?? [], 20, 60) && isStrs(s.goals, 5, 300) && s.goals.length > 0 &&
+    (s.picture === undefined || isDataImage(s.picture)));
+  const lessons = list(LESSONS_KEY, (l) => isObj(l) && isStr(l.id, 80) && isStr(l.t, 40) && isStr(l.title, 200) &&
+    isStr(l.topic, 400) && isStr(l.level, 8) && Array.isArray(l.steps) && l.steps.length > 0 && l.steps.length <= LESSON_MAX &&
+    l.steps.every(lessonStepOk));
+  if (d.pages !== undefined && (!Array.isArray(d.pages) || d.pages.length > 500)) throw fail("pages is not a list");
+  const pages = (d.pages || []).map((p) => {
+    if (!(isObj(p) && isStr(p.id, 80) && isStr(p.t, 40) && isStr(p.level, 8) && isStr(p.text, 1500) && isDataImage(p.photo) &&
+      Array.isArray(p.marks) && p.marks.every(markOk) && Array.isArray(p.edits) && p.edits.every(editOk))) throw fail("a page is in the wrong form");
+    let photo;
+    try { photo = dataUrlToBlob(p.photo); } catch { throw fail("a page photo is broken"); }
+    return { id: p.id, t: p.t, level: p.level, text: p.text, marks: p.marks, edits: p.edits, photo };
+  });
+  const settings = {};
+  const setting = (key, ok, norm = (v) => v) => {
+    if (d[key] === undefined) return;
+    if (!isStr(d[key], 500) || !ok(d[key])) throw fail(`the setting ${key} is wrong`);
+    settings[key] = norm(d[key]);
+  };
+  const isJsonList = (v) => { try { return Array.isArray(JSON.parse(v)); } catch { return false; } };
+  setting(LEVEL_KEY, (v) => LEVELS.includes(main(v)), main);
+  setting(WAIT_KEY, (v) => WAIT_CHOICES.includes(v));
+  setting(TRY_KEY, (v) => v === "0" || v === "1");
+  setting(EST_KEY, isJsonList);
+  setting(DISMISS_KEY, (v) => LEVELS.includes(main(v)), main);
+  return { mistakes, scenes, lessons, pages, settings };
+}
+
+// Keeps the first of each item, and drops items already here.
+function fresh(list, seen, key) {
+  return list.filter((x) => { const k = key(x); if (seen.has(k)) return false; seen.add(k); return true; });
+}
+// Merges the checked content into this browser. Records are added by id (mistakes by their content);
+// settings are taken only where this browser has none yet.
+async function applyBackup(plan) {
+  const count = { mistakes: 0, scenes: 0, lessons: 0, pages: 0 };
+  const have = loadMemory();
+  const newMistakes = fresh(plan.mistakes, new Set(have.map(memKey)), memKey);
+  if (newMistakes.length) { localStorage.setItem(MEMORY_KEY, JSON.stringify(have.concat(newMistakes).slice(-300))); count.mistakes = newMistakes.length; }
+  const haveScenes = ownScenes();
+  const newScenes = fresh(plan.scenes, new Set(haveScenes.map((s) => s.id)), (s) => s.id);
+  if (newScenes.length) {
+    localStorage.setItem(OWN_KEY, JSON.stringify(newScenes.concat(haveScenes).sort((a, b) => sceneTime(b) - sceneTime(a))));
+    count.scenes = newScenes.length;
+  }
+  const haveLessons = loadLessons();
+  const newLessons = fresh(plan.lessons, new Set(haveLessons.map((l) => l.id)), (l) => l.id);
+  if (newLessons.length) {
+    const all = newLessons.concat(haveLessons).sort((a, b) => (b.t > a.t ? 1 : b.t < a.t ? -1 : 0)).slice(0, LESSON_KEEP);
+    const keep = new Set(all.map((l) => l.id));
+    localStorage.setItem(LESSONS_KEY, JSON.stringify(all));
+    count.lessons = newLessons.filter((l) => keep.has(l.id)).length;
+  }
+  for (const [key, value] of Object.entries(plan.settings)) {
+    if (localStorage.getItem(key) === null) localStorage.setItem(key, value);
+  }
+  const havePages = await pagesAll();
+  const newPages = fresh(plan.pages, new Set(havePages.map((p) => p.id)), (p) => p.id);
+  if (newPages.length) { await pagesPut(newPages); count.pages = newPages.length; }
+  return count;
+}
+function importSummary(n) {
+  const part = (num, one, many) => (num ? `${num} ${num === 1 ? one : many}` : "");
+  const words = [part(n.mistakes, "mistake", "mistakes"), part(n.scenes, "scene", "scenes"),
+    part(n.pages, "page", "pages"), part(n.lessons, "lesson", "lessons")].filter(Boolean);
+  return words.length ? `Imported ${words.join(", ")}.` : "Nothing new in this file. This browser has it already.";
+}
+function refreshAfterImport() {
+  renderMemory(); renderScenes(); renderPages(); renderLessons();
+  if (stored(LEVEL_KEY)) setLevel(stored(LEVEL_KEY));
+  $("wait").value = stored(WAIT_KEY) || $("wait").value;
+  $("tryfirst").checked = stored(TRY_KEY) !== "0";
+  optionsLine();
+}
+async function importBackup(file) {
+  const btn = $("import-btn");
+  if (!file || btn.disabled) return; // a double click imports once
+  btn.disabled = true; backupMsg("Reading the file …");
+  try {
+    if (file.size > BACKUP_MAX) throw new Error("This file is larger than 30 MB, so it is not a Vogi backup. Nothing was changed.");
+    let obj;
+    try { obj = JSON.parse(await file.text()); } catch { throw new Error(BAD_FILE); }
+    const plan = checkBackup(obj);
+    let count;
+    try { count = await applyBackup(plan); }
+    catch {
+      refreshAfterImport();
+      throw new Error("Import stopped: this browser could not save everything, maybe its storage is full. What fitted is in place.");
+    }
+    refreshAfterImport();
+    backupMsg(importSummary(count));
+  } catch (e) { backupMsg(e.message); }
+  finally { btn.disabled = false; }
+}
+
 // Wiring
 $("brand").onclick = () => show("home");
+$("export-btn").onclick = exportBackup;
+$("import-btn").onclick = () => $("import-file").click();
+$("import-file").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; importBackup(f); };
 $("level-chip").onclick = askLevel;
 document.querySelectorAll("[data-level]").forEach((b) => b.onclick = () => {
   const first = !state.level; setLevel(b.dataset.level); first ? show("home", false) : back();
@@ -1304,4 +1514,4 @@ $("code-go").onclick = async () => {
   } finally { $("code-go").disabled = false; }
 };
 $("code-in").onkeydown = (e) => { if (e.key === "Enter") $("code-go").click(); };
-loadProviders(); loadBoard(); renderMemory(); loadScenes(); renderPages();
+loadProviders(); loadBoard(); renderMemory(); loadScenes(); renderPages(); renderLessons();

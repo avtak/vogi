@@ -36,8 +36,12 @@ work on paper.
    with questions, and Muse Image draws a picture for up to two explanations. The lesson builds itself: a wrong
    answer gets a second hint, not the answer. "I don't know", or a second wrong answer, shows the answer and the
    rule, and Vogi adds a new explanation and question right after the card. Wrong answers go to My progress.
-5. **My progress:** the learner's most frequent mistakes, "Practise my top 3", and every checked
-   homework page with its marks. All of it stays in the learner's browser.
+5. **My progress:** the learner's most frequent mistakes, "Practise my top 3", the lessons they
+   started ("Do it again"), and every checked homework page with its marks. All of it stays in the
+   learner's browser.
+6. **Another device:** in My progress, "Export" saves one file (`vogi-backup-YYYY-MM-DD.json`) with
+   those mistakes, scenes, pages and lessons. The access code is never in it. On the other device,
+   "Import" merges the file in and keeps what is already there.
 
 Technical details (model, cost, Vogi's self-check, the score table) sit in "How Vogi works" at the
 bottom of the page.

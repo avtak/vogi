@@ -222,6 +222,11 @@
       </div>
       <p class="fine">Kept in this browser only.</p>
     </section>
+    <section class="card hidden" id="lessons">
+      <h2>My lessons</h2>
+      <p class="note">The lessons you started, newest first. Do it again starts the same plan.</p>
+      <ul class="plain-list" id="lessons-list"></ul>
+    </section>
     <section class="card" id="pages">
       <h2>My pages</h2>
       <p class="note" id="pages-note">Your checked homework photos with Vogi's red marks appear here.</p>
@@ -235,6 +240,17 @@
           <button class="link" id="pv-delete">Delete this page</button>
         </div>
       </div>
+    </section>
+    <section class="card" id="backup">
+      <h2>Move to another device</h2>
+      <p class="note">Export saves your mistakes, scenes, pages and lessons in one file. Import that file on the other device. Nothing is overwritten: what is already there stays.</p>
+      <div class="row">
+        <button class="btn primary" id="export-btn">Export</button>
+        <button class="btn" id="import-btn">Import</button>
+        <input type="file" id="import-file" accept=".json,application/json" class="hidden" aria-label="Vogi backup file">
+      </div>
+      <p class="note" id="backup-msg" role="status"></p>
+      <p class="fine">The file holds your pages and photos. Keep it private. Vogi never sends it anywhere.</p>
     </section>
   </section>
 

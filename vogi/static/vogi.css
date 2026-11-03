@@ -230,3 +230,76 @@ th { color: var(--muted); font-weight: 600; }
 .examples { padding-left: 22px; margin: 8px 0; font-size: 19px; }
 .examples li { margin: 6px 0; }
 .lpic { display: block; width: 100%; max-height: 240px; object-fit: cover; border-radius: 10px; margin: 8px 0 10px; background: var(--line); }
+
+/* Glass look: a soft gradient behind the page and frosted cards. Colours stay tokens on :root.
+   Where backdrop-filter is missing, the cards keep their solid colour (@supports below). */
+:root {
+  --glass: rgba(255, 255, 255, 0.74);
+  --glass-line: rgba(255, 255, 255, 0.75);
+  --shadow: 0 10px 30px rgba(31, 60, 52, 0.10);
+  --shadow-hover: 0 16px 36px rgba(31, 60, 52, 0.16);
+  --blob-1: #bde8d5; --blob-2: #c3dbf6; --blob-3: #d9efc9;
+  --radius: 18px;
+  --focus: 0 0 0 3px rgba(31, 111, 92, 0.35);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --glass: rgba(29, 34, 40, 0.74);
+    --glass-line: rgba(255, 255, 255, 0.10);
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --shadow-hover: 0 16px 36px rgba(0, 0, 0, 0.45);
+    --blob-1: #123a33; --blob-2: #1b2b4a; --blob-3: #243520;
+    --focus: 0 0 0 3px rgba(92, 194, 166, 0.45);
+  }
+}
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(60% 45% at 0% 0%, var(--blob-1) 0%, transparent 70%),
+    radial-gradient(55% 40% at 100% 12%, var(--blob-2) 0%, transparent 70%),
+    radial-gradient(65% 45% at 50% 100%, var(--blob-3) 0%, transparent 72%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+.card, .choice:not(.primary), .scene, .lcard, .thumb, .level-chip {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+  border-color: var(--glass-line);
+  box-shadow: var(--shadow);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .card, .choice:not(.primary), .scene, .lcard, .thumb, .level-chip { background: var(--card); }
+}
+.card, .choice, .scene, .lcard, .thumb { border-radius: var(--radius); }
+.card { padding: 20px; }
+.choice { padding: 18px 20px; }
+.choice.primary { box-shadow: 0 10px 26px rgba(31, 111, 92, 0.25); }
+.choice.picked { box-shadow: inset 0 0 0 1px var(--accent), var(--shadow); }
+.choice, .scene, .btn, .lcard, .level-chip { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease; }
+.choice:not(.primary):hover, .choice:not(.primary):focus-visible, .scene:hover, .scene:focus-visible {
+  transform: translateY(-3px); box-shadow: var(--shadow-hover); border-color: var(--accent);
+}
+.choice.primary:hover, .choice.primary:focus-visible { transform: translateY(-3px); box-shadow: 0 14px 32px rgba(31, 111, 92, 0.34); }
+.choice:focus-visible, .scene:focus-visible { outline: none; box-shadow: var(--shadow-hover), var(--focus); }
+.btn { border-radius: 12px; }
+.btn:hover:not(:disabled) { border-color: var(--accent); box-shadow: 0 4px 14px rgba(31, 111, 92, 0.16); }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.06); box-shadow: 0 6px 18px rgba(31, 111, 92, 0.30); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:focus-visible, .link:focus-visible, .back:focus-visible, .level-chip:focus-visible, .chip-topic:focus-visible,
+.opt:focus-visible, .thumb:focus-visible, .cam:focus-visible, .word:focus-visible { outline: none; box-shadow: var(--focus); }
+.level-chip:hover { border-color: var(--accent); }
+.chip-topic { transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease; }
+.chip-topic:hover { transform: translateY(-1px); }
+.paper img { box-shadow: var(--shadow); }
+.thumb:hover { border-color: var(--accent); }
+.plain-list { list-style: none; padding: 0; margin: 8px 0 0; }
+.plain-list li { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.plain-list li:first-child { border-top: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .choice, .scene, .btn, .lcard, .level-chip, .chip-topic { transition: none !important; }
+  .choice:hover, .choice:focus-visible, .scene:hover, .scene:focus-visible, .choice.primary:hover, .btn:active:not(:disabled), .chip-topic:hover {
+    transform: none !important;
+  }
+}
