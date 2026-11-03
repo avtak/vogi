@@ -1305,10 +1305,13 @@ async function exportBackup() {
   if (btn.disabled) return;
   btn.disabled = true; backupMsg("Preparing the file …");
   try {
-    const file = await makeBackup();
+    const text = JSON.stringify(await makeBackup());
+    // A file Import would refuse is not worth saving: say so now, while the pages can still be trimmed.
+    const blob = new Blob([text], { type: "application/json" });
+    if (blob.size > BACKUP_MAX) throw new Error("Too big to import again (over 30 MB, mostly page photos). Delete old pages, then export.");
     const d = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     const name = `vogi-backup-${d}.json`;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(file)], { type: "application/json" }));
+    const url = URL.createObjectURL(blob);
     const a = el("a", { href: url, download: name });
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
