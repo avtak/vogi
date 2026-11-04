@@ -743,7 +743,7 @@ async function listen() {
   // A learner needs time to think mid-sentence. After the recogniser marks the end of a
   // sentence, Vogi waits a little longer; if the learner speaks again, the words join the same line.
   me.parts = [];
-  const grace = Number($("wait").value) || 1000; // on top of about 2 s the recogniser waits (no setting for that)
+  const grace = Number($("wait").value ?? 1000); // on top of about 2 s the recogniser waits (no setting for that); 0 sends at once
   const send = () => {
     if (live !== me || !me.parts.length) return;
     const t = me.parts.join(" ").trim().replace(/([.!?])\1+$/, "$1");
